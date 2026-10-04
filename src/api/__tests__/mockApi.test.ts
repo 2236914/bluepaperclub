@@ -95,3 +95,50 @@ describe('mock API', () => {
     ).rejects.toThrow(/converting/);
   });
 });
+
+describe('mock API: editing orders', () => {
+  beforeEach(async () => {
+    mockApi.resetSampleData();
+    await mockApi.signIn('ana.lopez@example.com', MOCK_PASSWORD);
+  });
+
+  it('edits details and logs what changed', async () => {
+    const [order] = await mockApi.listOrders({ view: 'active', search: 'PRT-H4WNE' });
+    const after = await mockApi.updateOrder(order.id, { copies: 12, paper: 'long', notes: '  Staple each set  ' });
+    expect(after.copies).toBe(12);
+    expect(after.paper).toBe('long');
+    expect(after.notes).toBe('Staple each set');
+    expect(after.events.at(-1)).toMatchObject({ type: 'edit', message: 'Changed paper, copies, customer note' });
+    // No change, no event.
+    const again = await mockApi.updateOrder(order.id, { copies: 12 });
+    expect(again.events.length).toBe(after.events.length);
+    await expect(mockApi.updateOrder(order.id, { email: '' })).rejects.toThrow(/need an email/);
+    await expect(mockApi.updateOrder(order.id, { copies: 0 })).rejects.toThrow(/1 and 999/);
+  });
+
+  it('adds, replaces and removes files', async () => {
+    const [order] = await mockApi.listOrders({ view: 'active', search: 'PRT-H4WNE' });
+    const added = await mockApi.addFiles(order.id, [pdf('Extra.pdf', 4)]);
+    expect(added.files.map((f) => f.originalName)).toContain('Extra.pdf');
+    const extra = added.files.find((f) => f.originalName === 'Extra.pdf')!;
+    expect(extra.pages).toBe(4);
+
+    const replaced = await mockApi.replaceFile(extra.id, pdf('Extra_fixed.pdf', 5));
+    expect(replaced.files.some((f) => f.id === extra.id)).toBe(false);
+    expect(replaced.files.find((f) => f.originalName === 'Extra_fixed.pdf')?.pages).toBe(5);
+    expect(replaced.events.at(-1)?.message).toBe('Replaced Extra.pdf with Extra_fixed.pdf');
+
+    const fixed = replaced.files.find((f) => f.originalName === 'Extra_fixed.pdf')!;
+    const removed = await mockApi.removeFile(fixed.id);
+    expect(removed.files).toHaveLength(order.files.length);
+    expect(removed.events.at(-1)?.message).toBe('Removed Extra_fixed.pdf');
+  }, 15_000);
+
+  it('keeps at least one file and leaves claimed orders alone', async () => {
+    const [single] = await mockApi.listOrders({ view: 'active', search: 'PRT-Q9TZA' });
+    await expect(mockApi.removeFile(single.files[0].id)).rejects.toThrow(/at least one file/);
+    const [claimed] = await mockApi.listOrders({ view: 'claimed', search: 'PRT-KD2RT' });
+    await expect(mockApi.addFiles(claimed.id, [pdf('x.pdf', 1)])).rejects.toThrow(/already claimed/);
+    await expect(mockApi.addFiles(single.id, [new File(['x'], 'sheet.xlsx')])).rejects.toThrow(/\.xlsx/);
+  });
+});

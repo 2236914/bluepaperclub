@@ -12,6 +12,7 @@ import {
   type Order,
   type OrderCounts,
   type OrderEvent,
+  type OrderPatch,
   type OrderFile,
   type OrderStatus,
   type OrderView,
@@ -560,6 +561,136 @@ class MockApi implements PortalApi {
     Object.assign(member, patch);
     this.save();
     return clone(member);
+  }
+
+  /* ---------- editing an order ---------- */
+
+  async updateOrder(id: string, patch: OrderPatch): Promise<Order> {
+    const me = this.requireStaff();
+    await latency();
+    const order = this.orderById(id);
+    const next = { ...order, ...patch };
+    if (patch.customerName !== undefined && !patch.customerName.trim()) throw new PortalError('Enter the customer name.');
+    if (patch.email !== undefined && patch.email !== null && patch.email.trim() && !isEmail(patch.email)) {
+      throw new PortalError('Enter a valid email address.');
+    }
+    if (order.source === 'online' && patch.email !== undefined && !patch.email?.trim()) {
+      throw new PortalError('Online orders need an email: it is how the customer tracks the order.');
+    }
+    if (patch.copies !== undefined && (!Number.isInteger(patch.copies) || patch.copies < 1 || patch.copies > 999)) {
+      throw new PortalError('Copies must be between 1 and 999.');
+    }
+    const LABEL: Record<keyof OrderPatch, string> = {
+      customerName: 'name', email: 'email', phone: 'mobile number', paper: 'paper', color: 'color', sides: 'sides', copies: 'copies', notes: 'customer note',
+    };
+    // Listed in form order, whatever order the patch came in.
+    const changed = (Object.keys(LABEL) as Array<keyof OrderPatch>).filter((k) => k in patch).filter((k) => {
+      const before = order[k] ?? null;
+      const after = (typeof next[k] === 'string' ? (next[k] as string).trim() || null : next[k]) ?? null;
+      return before !== after;
+    });
+    if (changed.length === 0) return clone(order);
+    for (const k of changed) {
+      const v = next[k];
+      (order as unknown as Record<string, unknown>)[k] = typeof v === 'string' ? v.trim() || null : v;
+    }
+    if (order.customerName == null) order.customerName = '';
+    order.events.push({ type: 'edit', message: `Changed ${changed.map((k) => LABEL[k]).join(', ')}`, actor: me.id, createdAt: nowIso() });
+    this.save();
+    return clone(order);
+  }
+
+  private async fakeUpload(file: File, onProgress?: (pct: number) => void): Promise<void> {
+    const duration = 500 + Math.min(2000, (file.size / (4 * 1024 * 1024)) * 1000);
+    for (let s = 1; s <= 6; s++) {
+      await wait(duration / 6);
+      onProgress?.(Math.round((s / 6) * 100));
+    }
+  }
+
+  private async makeFile(id: string, file: File): Promise<OrderFile> {
+    this.blobs.set(id, file);
+    const kind = fileKind(file.name);
+    return {
+      id,
+      originalName: file.name,
+      mime: file.type || mimeFor(file.name),
+      sizeBytes: file.size,
+      pages: kind === 'word' ? null : await countPages(file),
+      conversion: kind === 'word' ? 'pending' : 'not_needed',
+    };
+  }
+
+  private checkFiles(files: File[]): void {
+    for (const f of files) {
+      const problem = validateFile(f);
+      if (problem) throw new PortalError(`${f.name}: ${problem}`);
+    }
+  }
+
+  async addFiles(orderId: string, files: File[], onProgress?: (fileIndex: number, pct: number) => void): Promise<Order> {
+    const me = this.requireStaff();
+    const order = this.orderById(orderId);
+    if (order.status === 'claimed') throw new PortalError('This order was already claimed. Make a new order instead.');
+    if (files.length === 0) throw new PortalError('Choose at least one file.');
+    if (order.files.length + files.length > MAX_FILES) {
+      throw new PortalError(`An order can have up to ${MAX_FILES} files. This one has ${order.files.length}.`);
+    }
+    this.checkFiles(files);
+    await Promise.all(files.map((f, i) => this.fakeUpload(f, (pct) => onProgress?.(i, pct))));
+    const fresh = this.orderById(orderId);
+    const added = await Promise.all(files.map((f) => this.makeFile(uid(`${orderId}_f`), f)));
+    fresh.files.push(...added);
+    fresh.events.push({ type: 'edit', message: `Added ${added.map((f) => f.originalName).join(', ')}`, actor: me.id, createdAt: nowIso() });
+    this.save();
+    this.runAgent();
+    return clone(fresh);
+  }
+
+  async replaceFile(fileId: string, file: File, onProgress?: (pct: number) => void): Promise<Order> {
+    const me = this.requireStaff();
+    const { order } = this.findFile(fileId);
+    if (order.status === 'claimed') throw new PortalError('This order was already claimed. Make a new order instead.');
+    this.checkFiles([file]);
+    await this.fakeUpload(file, onProgress);
+    const { order: fresh, file: old } = this.findFile(fileId);
+    const replacement = await this.makeFile(uid(`${fresh.id}_f`), file);
+    fresh.files = fresh.files.map((f) => (f.id === fileId ? replacement : f));
+    for (const kind of ['original', 'pdf']) {
+      const url = this.urls.get(`${fileId}:${kind}`);
+      if (url) URL.revokeObjectURL(url);
+      this.urls.delete(`${fileId}:${kind}`);
+    }
+    this.blobs.delete(fileId);
+    fresh.events.push({
+      type: 'edit',
+      message: old.originalName === file.name ? `Replaced ${file.name} with a new copy` : `Replaced ${old.originalName} with ${file.name}`,
+      actor: me.id,
+      createdAt: nowIso(),
+    });
+    this.save();
+    this.runAgent();
+    return clone(fresh);
+  }
+
+  async removeFile(fileId: string): Promise<Order> {
+    const me = this.requireStaff();
+    await latency();
+    const { order, file } = this.findFile(fileId);
+    if (order.status === 'claimed') throw new PortalError('This order was already claimed. Its files are kept as they were.');
+    if (order.files.length <= 1) throw new PortalError("An order needs at least one file. Replace this file instead of removing it.");
+    order.files = order.files.filter((f) => f.id !== fileId);
+    // Queued jobs for the removed file never print.
+    for (const j of this.state.jobs) {
+      if (j.fileId === fileId && j.status === 'queued') {
+        j.status = 'failed';
+        j.error = 'File removed';
+      }
+    }
+    this.blobs.delete(fileId);
+    order.events.push({ type: 'edit', message: `Removed ${file.originalName}`, actor: me.id, createdAt: nowIso() });
+    this.save();
+    return clone(order);
   }
 
   /* ---------- review-only controls (not part of PortalApi) ---------- */

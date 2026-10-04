@@ -77,9 +77,15 @@
   --radius-round: 9999px;
   --border-hair: 1px;
   --border-strong: 2px;
-  --control-sm: 32px;
-  --control-md: 40px;
-  --control-lg: 48px;
+  --control-sm: calc(32px * var(--cs));
+  --control-md: calc(40px * var(--cs));
+  --control-lg: calc(48px * var(--cs));
+
+  /* Display settings (see Preferences): text scale, heading scale, control scale */
+  --ts: 1;
+  --hs: 1;
+  --cs: 1;
+  --focus-width: 2px;
 
   /* Layout and layers */
   --container: 1200px;
@@ -132,3 +138,22 @@
   --overlay: rgba(0, 0, 0, 0.72);
   color-scheme: dark;
 }
+
+/* ---------- Display settings chosen on the site (html data attributes) ---------- */
+
+/* Larger text: body text grows most, headings a little, controls get bigger hit areas. */
+:root[data-text="large"] { --ts: 1.2; --hs: 1.1; --cs: 1.15; }
+:root[data-text="xlarge"] { --ts: 1.4; --hs: 1.2; --cs: 1.3; }
+
+/* High contrast: every grey text becomes full ink, soft dividers become visible lines. */
+:root[data-contrast="high"] {
+  --ink-2: var(--ink);
+  --ink-3: var(--ink);
+  --line-soft: var(--n-600);
+  --block: var(--n-300);
+  --focus-width: 3px;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-contrast="high"]:not([data-theme="light"]) { --line-soft: var(--n-400); --block: var(--n-600); }
+}
+:root[data-theme="dark"][data-contrast="high"] { --line-soft: var(--n-400); --block: var(--n-600); }

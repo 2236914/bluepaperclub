@@ -2,6 +2,7 @@ import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type Selec
 import { ChevronDown } from 'lucide-react';
 import { Icon, type IconType } from './Icon';
 import { cx } from './cx';
+import { useI18n } from '../../i18n';
 
 interface FieldShell {
   label: ReactNode;
@@ -14,6 +15,7 @@ interface FieldShell {
 }
 
 function Shell({ id, label, hint, error, icon, suffix, className, children }: FieldShell & { id: string; children: ReactNode }) {
+  const { fmt } = useI18n();
   return (
     <div className={cx('mn-field', error && 'mn-field-error', icon && 'mn-has-icon', className)}>
       <label className="mn-field-label" htmlFor={id}>{label}</label>
@@ -24,7 +26,7 @@ function Shell({ id, label, hint, error, icon, suffix, className, children }: Fi
       </div>
       {(error || hint) && (
         <span className="mn-field-hint" id={`${id}-hint`}>
-          {error ? `Error: ${error}` : hint}
+          {error ? fmt.error(error) : hint}
         </span>
       )}
     </div>

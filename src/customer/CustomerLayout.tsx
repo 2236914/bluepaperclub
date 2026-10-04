@@ -4,13 +4,16 @@ import { ButtonLink } from '../design/components';
 import { useShop } from '../shared/ShopContext';
 import { BrandMark } from '../shared/BrandMark';
 import { MockBar } from '../shared/MockBar';
+import { HelpProvider } from '../shared/help/HelpProvider';
+import { EasyBar } from '../shared/help/EasyBar';
+import { Welcome } from '../shared/help/Welcome';
 
 export function CustomerLayout() {
   const { shop } = useShop();
   const { pathname } = useLocation();
   const onTrack = pathname.startsWith('/track');
   return (
-    <>
+    <HelpProvider>
       <a className="mn-btn mn-btn-primary pp-skip" href="#main">Skip to content</a>
       <MockBar />
       <header className="pp-site-header">
@@ -24,11 +27,12 @@ export function CustomerLayout() {
             {onTrack ? (
               <ButtonLink to="/" size="sm" icon={Upload}>Send files</ButtonLink>
             ) : (
-              <ButtonLink to="/track" size="sm" icon={Search}>Track an order</ButtonLink>
+              <ButtonLink to="/track" size="sm" icon={Search} data-tour="track">Track an order</ButtonLink>
             )}
           </nav>
         </div>
       </header>
+      <EasyBar />
       <main id="main" tabIndex={-1} style={{ outline: 'none' }}>
         <Outlet />
       </main>
@@ -53,6 +57,7 @@ export function CustomerLayout() {
           </div>
         </div>
       </footer>
-    </>
+      <Welcome />
+    </HelpProvider>
   );
 }

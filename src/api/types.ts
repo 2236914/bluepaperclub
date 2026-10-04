@@ -20,7 +20,8 @@ export interface OrderFile {
 }
 
 export interface OrderEvent {
-  type: 'status_change' | 'note' | 'email' | 'print';
+  /** 'edit' is an addition: staff changed the order's details or files */
+  type: 'status_change' | 'note' | 'email' | 'print' | 'edit';
   fromStatus?: OrderStatus;
   toStatus?: OrderStatus;
   message?: string;
@@ -124,6 +125,11 @@ export interface OrderCounts {
 
 export type OrderView = 'active' | 'claimed' | 'all';
 
+/** What staff can change on an order after it arrives. */
+export type OrderPatch = Partial<
+  Pick<Order, 'customerName' | 'email' | 'phone' | 'paper' | 'color' | 'sides' | 'copies' | 'notes'>
+>;
+
 export interface PortalApi {
   // customer
   submitOrder(input: NewOrderInput, onProgress?: (fileIndex: number, pct: number) => void): Promise<{ code: string }>;
@@ -152,6 +158,14 @@ export interface PortalApi {
   listStaff(): Promise<StaffMember[]>;
   addStaff(input: { name: string; email: string; role: StaffRole }): Promise<StaffMember>;
   updateStaff(id: string, patch: Partial<Pick<StaffMember, 'name' | 'role' | 'active'>>): Promise<StaffMember>;
+
+  // additions: staff editing an order after it arrives (each change is logged as an 'edit' event)
+  updateOrder(id: string, patch: OrderPatch): Promise<Order>;
+  addFiles(orderId: string, files: File[], onProgress?: (fileIndex: number, pct: number) => void): Promise<Order>;
+  /** swap one file for a corrected copy (e.g. the customer emailed a fixed file) */
+  replaceFile(fileId: string, file: File, onProgress?: (pct: number) => void): Promise<Order>;
+  /** an order keeps at least one file */
+  removeFile(fileId: string): Promise<Order>;
 }
 
 /** Thrown for problems the person can fix; `message` is shown as-is after "Error:". */

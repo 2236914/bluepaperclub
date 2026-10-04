@@ -190,7 +190,7 @@ function OrderList({ orders, selected, onSelect }: { orders: Order[]; selected: 
               <span className="t-meta">{settingsSummary(o)}</span>
             </span>
             <span className="pp-cell-tag">
-              <StatusTag status={o.status}>{o.status === 'ready' ? 'Ready' : undefined}</StatusTag>
+              <StatusTag status={o.status} short />
             </span>
           </button>
         </li>

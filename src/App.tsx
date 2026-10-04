@@ -13,6 +13,8 @@ import { EmailsPage } from './staff/EmailsPage';
 import { ShopProvider } from './shared/ShopContext';
 import { RequireStaff, StaffSessionProvider } from './shared/StaffSession';
 import { NotFoundPage } from './customer/NotFoundPage';
+import { I18nProvider } from './i18n';
+import { PreferencesProvider } from './shared/Preferences';
 
 const routes: RouteObject[] = [
   {
@@ -56,11 +58,15 @@ const router = mode === 'hash' ? createHashRouter(routes) : mode === 'memory' ? 
 
 export function App() {
   return (
-    <ShopProvider>
-      <StaffSessionProvider>
-        <RouterProvider router={router} />
-        <Toaster />
-      </StaffSessionProvider>
-    </ShopProvider>
+    <I18nProvider>
+      <PreferencesProvider>
+        <ShopProvider>
+          <StaffSessionProvider>
+            <RouterProvider router={router} />
+            <Toaster />
+          </StaffSessionProvider>
+        </ShopProvider>
+      </PreferencesProvider>
+    </I18nProvider>
   );
 }

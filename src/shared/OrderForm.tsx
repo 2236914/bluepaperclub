@@ -175,7 +175,7 @@ export function OrderForm({ mode, onSubmitted }: OrderFormProps) {
 
   return (
     <form className="pp-two-col" onSubmit={onSubmit} noValidate aria-busy={submitting}>
-      <Card title={walkIn ? '1. Files' : '1. Your files'} meta={filesMeta} className="pp-stack">
+      <Card title={walkIn ? '1. Files' : '1. Your files'} meta={filesMeta} className="pp-stack" data-tour="files">
         <div ref={refs.files} tabIndex={-1} className="pp-stack" style={{ outline: 'none' }}>
           <UploadZone
             onFiles={addFiles}
@@ -220,7 +220,7 @@ export function OrderForm({ mode, onSubmitted }: OrderFormProps) {
       </Card>
 
       <div className="pp-stack-6">
-        <Card title="2. Print settings" meta={`Applies to all ${goodFiles.length > 1 ? plural(goodFiles.length, 'file') : 'files'}`} className="pp-stack">
+        <Card data-tour="settings" title="2. Print settings" meta={`Applies to all ${goodFiles.length > 1 ? plural(goodFiles.length, 'file') : 'files'}`} className="pp-stack">
           <div className="mn-field">
             <span className="mn-field-label" id={`${mode}-paper`}>Paper size</span>
             <Segmented<PaperSize>
@@ -292,7 +292,7 @@ export function OrderForm({ mode, onSubmitted }: OrderFormProps) {
           />
         </Card>
 
-        <Card title={walkIn ? '3. Customer' : '3. Your details'} className="pp-stack">
+        <Card title={walkIn ? '3. Customer' : '3. Your details'} className="pp-stack" data-tour="details">
           <Field
             ref={refs.name}
             label="Full name"
@@ -359,7 +359,7 @@ export function OrderForm({ mode, onSubmitted }: OrderFormProps) {
             </Alert>
           )}
 
-          <div className="pp-stack-2">
+          <div className="pp-stack-2" data-tour="submit">
             {goodFiles.length > 0 && (
               <p className="t-meta">
                 {[filesMeta, settingsSummary({ paper, color, sides, copies: Number.isInteger(copiesNum) && copiesNum > 0 ? copiesNum : 1 })].join(' · ')}

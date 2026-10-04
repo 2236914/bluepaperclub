@@ -3,6 +3,7 @@ import { CircleCheck, Info, OctagonX, TriangleAlert, X } from 'lucide-react';
 import { Icon, type IconType } from './Icon';
 import { IconButton } from './Button';
 import { cx } from './cx';
+import { useI18n } from '../../i18n';
 
 /* ---------- Progress: a 4px inverse bar ---------- */
 export function Progress({ value, label, showLabel, className }: { value?: number; label: string; showLabel?: boolean; className?: string }) {
@@ -79,6 +80,7 @@ export function Alert({ tone = 'info', title, children, action, onClose, variant
   className?: string;
   role?: 'alert' | 'status';
 }) {
+  const { m } = useI18n();
   return (
     <div
       className={cx('mn-alert', tone === 'error' && 'mn-alert-error', tone === 'warning' && 'mn-alert-warning', variant === 'inverse' && 'mn-alert-inverse', className)}
@@ -90,7 +92,7 @@ export function Alert({ tone = 'info', title, children, action, onClose, variant
         {children && <div className="mn-alert-body">{children}</div>}
         {action && <div className="mn-alert-actions">{action}</div>}
       </div>
-      {onClose && <IconButton icon={X} label="Dismiss" size="sm" className="mn-alert-close" onClick={onClose} />}
+      {onClose && <IconButton icon={X} label={m.common.dismiss} size="sm" className="mn-alert-close" onClick={onClose} />}
     </div>
   );
 }

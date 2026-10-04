@@ -12,6 +12,10 @@
  *   queuePrint      → insert into print_jobs (status 'queued')
  *   agentStatus     → agents.last_seen_at (offline after 90 s)
  *   subscribeOrders → Realtime on orders, order_files and print_jobs
+ *   updateOrder     → update orders (RLS: staff) + an 'edit' order_event
+ *   addFiles / replaceFile → request-uploads, PUT to R2, then a small
+ *                     edit-files function that moves them into orders/<id>/
+ *   removeFile      → delete the order_files row and its R2 objects
  *
  * Until then every call says so clearly instead of failing somewhere deeper.
  */
@@ -43,4 +47,8 @@ export const supabaseApi: PortalApi = {
   listStaff: async () => notConnected(),
   addStaff: async () => notConnected(),
   updateStaff: async () => notConnected(),
+  updateOrder: async () => notConnected(),
+  addFiles: async () => notConnected(),
+  replaceFile: async () => notConnected(),
+  removeFile: async () => notConnected(),
 };

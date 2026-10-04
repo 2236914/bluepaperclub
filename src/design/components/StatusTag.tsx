@@ -1,6 +1,6 @@
 import { Inbox, PackageCheck, Printer, Check, TriangleAlert } from 'lucide-react';
 import type { OrderStatus } from '../../api/types';
-import { STATUS_LABEL } from '../../lib/format';
+import { useI18n } from '../../i18n';
 import { Icon, type IconType } from './Icon';
 import { cx } from './cx';
 
@@ -19,17 +19,20 @@ export const STATUS_ICON: Record<OrderStatus, IconType> = Object.fromEntries(
 
 export interface StatusTagProps {
   status: OrderStatus;
-  /** shorten the word ("Ready"), never remove it */
+  /** use the short word ("Ready" instead of "Ready for pickup"); the word is never removed */
+  short?: boolean;
+  /** a custom word, rarely needed */
   children?: string;
   className?: string;
 }
 
-export function StatusTag({ status, children, className }: StatusTagProps) {
+export function StatusTag({ status, short, children, className }: StatusTagProps) {
+  const { m } = useI18n();
   const look = LOOK[status];
   return (
     <span className={cx('mn-tag', look.cls, className)}>
       <Icon icon={look.icon} size={12} />
-      {children ?? STATUS_LABEL[status]}
+      {children ?? (short ? m.common.statusShort[status] : m.common.status[status])}
     </span>
   );
 }

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Icon } from './Icon';
 import { cx } from './cx';
+import { useI18n } from '../../i18n';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -62,6 +63,7 @@ export interface DialogProps {
 
 /** A modal for one task. Under 600px it becomes a bottom sheet with stacked 48px buttons. */
 export function Dialog({ open, onClose, title, description, children, footer, size = 'md', alert }: DialogProps) {
+  const { m } = useI18n();
   const panel = useRef<HTMLDivElement>(null);
   const id = useId();
   useModal(open, onClose, panel);
@@ -80,7 +82,7 @@ export function Dialog({ open, onClose, title, description, children, footer, si
         <div className="mn-dialog-head">
           <h2 className="mn-dialog-title" id={`${id}-title`}>{title}</h2>
           {onClose && (
-            <button type="button" className="mn-dialog-close" aria-label="Close" onClick={onClose}>
+            <button type="button" className="mn-dialog-close" aria-label={m.common.close} onClick={onClose}>
               <Icon icon={X} />
             </button>
           )}
@@ -110,6 +112,7 @@ export interface DrawerProps {
 
 /** A full-height panel from the side; full width on phones. */
 export function Drawer({ open, onClose, title, children, footer, side = 'right', width = 440, headerExtra }: DrawerProps) {
+  const { m } = useI18n();
   const panel = useRef<HTMLDivElement>(null);
   const id = useId();
   useModal(open, onClose, panel);
@@ -133,7 +136,7 @@ export function Drawer({ open, onClose, title, children, footer, side = 'right',
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             {headerExtra}
             {onClose && (
-              <button type="button" className="mn-dialog-close" aria-label="Close" onClick={onClose}>
+              <button type="button" className="mn-dialog-close" aria-label={m.common.close} onClick={onClose}>
                 <Icon icon={X} />
               </button>
             )}

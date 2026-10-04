@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { OctagonX, X } from 'lucide-react';
 import { Icon, type IconType } from './Icon';
+import { useI18n } from '../../i18n';
 import { cx } from './cx';
 
 interface ToastItem {
@@ -37,14 +38,16 @@ function push(message: ReactNode, opts: { icon?: IconType; tone?: 'default' | 'e
 export function toast(message: ReactNode, opts?: Parameters<typeof push>[1]) {
   return push(message, opts);
 }
+/** The "Error:" prefix is added in the reader's language when the toast shows. */
 toast.error = (message: string, opts?: Omit<NonNullable<Parameters<typeof push>[1]>, 'tone'>) =>
-  push(`Error: ${message.replace(/^Error:\s*/, '')}`, { ...opts, tone: 'error' });
+  push(message.replace(/^(Error:|May mali:)\s*/, ''), { ...opts, tone: 'error' });
 toast.dismiss = (id?: number) => {
   items = id == null ? [] : items.filter((t) => t.id !== id);
   publish();
 };
 
 function ToastView({ item }: { item: ToastItem }) {
+  const { m } = useI18n();
   const [paused, setPaused] = useState(false);
   const remaining = useRef(item.duration);
   useEffect(() => {
@@ -67,7 +70,10 @@ function ToastView({ item }: { item: ToastItem }) {
       onBlur={() => setPaused(false)}
     >
       {icon && <Icon icon={icon} />}
-      <span className="mn-toast-msg">{item.message}</span>
+      <span className="mn-toast-msg">
+        {item.tone === 'error' && `${m.common.errorPrefix} `}
+        {item.message}
+      </span>
       {item.action && (
         <button
           type="button"
@@ -80,7 +86,7 @@ function ToastView({ item }: { item: ToastItem }) {
           {item.action.label}
         </button>
       )}
-      <button type="button" className="mn-toast-x" aria-label="Dismiss" onClick={() => toast.dismiss(item.id)}>
+      <button type="button" className="mn-toast-x" aria-label={m.common.dismiss} onClick={() => toast.dismiss(item.id)}>
         <Icon icon={X} />
       </button>
     </div>
