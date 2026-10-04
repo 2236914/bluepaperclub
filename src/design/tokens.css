@@ -1,0 +1,134 @@
+/*
+ * Print Portal tokens — Monari, re-keyed from black to copper peptide blue.
+ *
+ * Monari's rules still hold (square, flat, 1px lines, bleed blocks), but the
+ * strongest thing on screen — the `inverse` block, primary buttons, selected
+ * segments, the Ready tag, focus rings — is the deep blue of raw GHK-Cu
+ * (copper peptide) instead of black. The neutral scale carries a faint blue
+ * cast so greys sit with the blue rather than against it.
+ *
+ * UI code uses the semantic tokens (bg, surface, ink, inverse…), never the
+ * scale steps (n-*, cu-*) directly.
+ */
+:root {
+  /* Neutral scale, cool-cast (n-0 white … n-1000 black) */
+  --n-0: #ffffff;
+  --n-50: #f4f5f8;
+  --n-100: #e8eaf0;
+  --n-200: #d5d9e3;
+  --n-300: #b8becd;
+  --n-400: #9aa1b4;
+  --n-500: #7c8399;
+  --n-600: #5e657b;
+  --n-700: #464c61;
+  --n-800: #2f3447;
+  --n-900: #1c2033;
+  --n-950: #11142a;
+  --n-1000: #000000;
+
+  /* Copper peptide blue scale. cu-700 is the brand colour. */
+  --cu-50: #f0f2fc;
+  --cu-100: #e3e7f8;
+  --cu-200: #c3ccf0;
+  --cu-300: #96a5e2;
+  --cu-400: #6a7fd2;
+  --cu-500: #4560c4;
+  --cu-600: #2c47b8;
+  --cu-700: #1e37a0;
+  --cu-800: #172b80;
+  --cu-900: #111f5c;
+  --cu-950: #0b1438;
+
+  /* Semantic colours — light */
+  --bg: var(--n-50);
+  --surface: var(--n-0);
+  --surface-sunk: var(--n-100);
+  --ink: var(--n-950);
+  --ink-2: var(--n-700);
+  --ink-3: var(--n-600);
+  --line: var(--n-950);
+  --line-soft: var(--n-200);
+  --inverse: var(--cu-700);
+  --on-inverse: var(--n-0);
+  --inverse-hover: var(--cu-600);
+  --block: var(--n-200);
+  --on-block: var(--n-950);
+  --focus: var(--cu-700);
+  --overlay: rgba(11, 20, 56, 0.72);
+  --scrim: var(--n-1000);
+  --on-scrim: var(--n-0);
+
+  /* Type */
+  --font-sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius, borders, control heights */
+  --radius-0: 0px;
+  --radius-round: 9999px;
+  --border-hair: 1px;
+  --border-strong: 2px;
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 48px;
+
+  /* Layout and layers */
+  --container: 1200px;
+  --z-sticky: 100;
+  --z-drawer: 1200;
+  --z-dialog: 1300;
+  --z-popover: 1400;
+  --z-toast: 1500;
+  --z-tooltip: 1600;
+
+  color-scheme: light;
+}
+
+/* Dark: the blue lifts to a pale copper blue so the hierarchy holds. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: var(--n-950);
+    --surface: var(--n-900);
+    --surface-sunk: var(--n-800);
+    --ink: var(--n-50);
+    --ink-2: var(--n-300);
+    --ink-3: var(--n-400);
+    --line: var(--n-50);
+    --line-soft: var(--n-800);
+    --inverse: var(--cu-300);
+    --on-inverse: var(--n-950);
+    --inverse-hover: var(--cu-200);
+    --block: var(--n-700);
+    --on-block: var(--n-50);
+    --focus: var(--cu-300);
+    --overlay: rgba(0, 0, 0, 0.72);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: var(--n-950);
+  --surface: var(--n-900);
+  --surface-sunk: var(--n-800);
+  --ink: var(--n-50);
+  --ink-2: var(--n-300);
+  --ink-3: var(--n-400);
+  --line: var(--n-50);
+  --line-soft: var(--n-800);
+  --inverse: var(--cu-300);
+  --on-inverse: var(--n-950);
+  --inverse-hover: var(--cu-200);
+  --block: var(--n-700);
+  --on-block: var(--n-50);
+  --focus: var(--cu-300);
+  --overlay: rgba(0, 0, 0, 0.72);
+  color-scheme: dark;
+}

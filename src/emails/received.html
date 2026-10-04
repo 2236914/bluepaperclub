@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Order {{order_code}} received</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f8;">
+<div style="display:none;max-height:0;overflow:hidden;">Your order ID is {{order_code}}. Keep it to track and claim your order.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5f8;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border:1px solid #11142a;">
+        <tr>
+          <td style="background:#1e37a0;padding:24px 32px;font-family:'Instrument Sans','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:17px;line-height:22px;font-weight:600;color:#ffffff;">
+            {{shop_name}}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;font-family:'Instrument Sans','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#11142a;">
+            <h1 style="margin:0 0 8px;font-size:26px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#11142a;">We got your files, {{customer_first_name}}.</h1>
+            <p style="margin:0 0 24px;color:#464c61;">Here's your order ID. Keep this email: you'll need the ID to track your order and to claim it.</p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e8eaf0;margin:0 0 24px;">
+              <tr>
+                <td style="padding:20px 24px;">
+                  <div style="font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:11px;line-height:16px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#11142a;">Order ID</div>
+                  <div style="font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:36px;line-height:44px;font-weight:500;letter-spacing:0.02em;color:#11142a;">{{order_code}}</div>
+                </td>
+              </tr>
+            </table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+              {{{files_rows}}}
+              <tr><td style="padding:8px 0;border-bottom:1px solid #d5d9e3;width:40%;font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">Paper</td><td style="padding:8px 0;border-bottom:1px solid #d5d9e3;">{{paper}}</td></tr>
+              <tr><td style="padding:8px 0;border-bottom:1px solid #d5d9e3;font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">Color</td><td style="padding:8px 0;border-bottom:1px solid #d5d9e3;">{{color}}</td></tr>
+              <tr><td style="padding:8px 0;border-bottom:1px solid #d5d9e3;font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">Sides</td><td style="padding:8px 0;border-bottom:1px solid #d5d9e3;">{{sides}}</td></tr>
+              <tr><td style="padding:8px 0;border-bottom:1px solid #d5d9e3;font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">Copies</td><td style="padding:8px 0;border-bottom:1px solid #d5d9e3;">{{copies}}</td></tr>
+              <tr><td style="padding:8px 0;font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;">Submitted</td><td style="padding:8px 0;">{{submitted_at}}</td></tr>
+            </table>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+              <tr>
+                <td style="background:#1e37a0;">
+                  <a href="{{tracking_url}}" style="display:inline-block;padding:14px 24px;font-family:'Instrument Sans','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;">Track your order</a>
+                </td>
+              </tr>
+            </table>
+
+            <h2 style="margin:0 0 8px;font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:11px;line-height:16px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#11142a;">What happens next</h2>
+            <p style="margin:0 0 4px;color:#464c61;">1. We check your files. If something won't print well, we email you before printing.</p>
+            <p style="margin:0 0 4px;color:#464c61;">2. We print your order and email you when it's ready for pickup.</p>
+            <p style="margin:0;color:#464c61;">3. Claim it at {{shop_address}}. Show your order ID and pay at the counter.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #d5d9e3;font-family:'Instrument Sans','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:18px;color:#5e657b;">
+            {{shop_name}} · {{shop_address}} · {{shop_hours}} · {{shop_phone}}<br>
+            You're getting this because you sent files through our website.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

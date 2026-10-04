@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Order {{order_code}}: a problem with a file</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f8;">
+<div style="display:none;max-height:0;overflow:hidden;">We need your help with a file in order {{order_code}} before we can print it.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5f8;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border:1px solid #11142a;">
+        <tr>
+          <td style="background:#1e37a0;padding:24px 32px;font-family:'Instrument Sans','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:17px;line-height:22px;font-weight:600;color:#ffffff;">
+            {{shop_name}}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;font-family:'Instrument Sans','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:22px;color:#11142a;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+              <tr>
+                <td style="border:2px solid #11142a;padding:3px 8px;font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:11px;line-height:16px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#11142a;">&#9888; File issue</td>
+              </tr>
+            </table>
+            <h1 style="margin:0 0 8px;font-size:26px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#11142a;">We need your help with a file, {{customer_first_name}}.</h1>
+            <p style="margin:0 0 24px;color:#464c61;">Your order {{order_code}} is on hold until it's sorted. Here's what we found:</p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;border:2px solid #11142a;">
+              <tr>
+                <td style="padding:16px 20px;font-size:15px;line-height:22px;color:#11142a;">{{issue_message}}</td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 8px;color:#464c61;">Reply to this email with a corrected file, or call us at {{shop_phone}}. Mention your order ID: <span style="font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-weight:500;color:#11142a;">{{order_code}}</span>.</p>
+            <p style="margin:0 0 24px;color:#464c61;">We'll print it as soon as it's fixed and email you when it's ready.</p>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="border:1px solid #11142a;">
+                  <a href="{{tracking_url}}" style="display:inline-block;padding:13px 24px;font-family:'Instrument Sans','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;font-weight:600;color:#11142a;text-decoration:none;">View order status</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #d5d9e3;font-family:'Instrument Sans','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:18px;color:#5e657b;">
+            {{shop_name}} · {{shop_address}} · {{shop_phone}}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
