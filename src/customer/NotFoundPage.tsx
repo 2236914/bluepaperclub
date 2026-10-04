@@ -1,14 +1,17 @@
 import { Search, Upload } from 'lucide-react';
 import { Bleed, ButtonLink } from '../design/components';
+import { useI18n } from '../i18n';
 
 export function NotFoundPage() {
+  const { m } = useI18n();
+  const t = m.customer.notFound;
   return (
-    <Bleed tone="sunk">
-      <h1 className="t-display">This page doesn't exist</h1>
-      <p className="t-ink-2">Check the link, or start from one of these.</p>
-      <div className="pp-row">
-        <ButtonLink to="/" variant="primary" icon={Upload}>Send files</ButtonLink>
-        <ButtonLink to="/track" icon={Search}>Track an order</ButtonLink>
+    <Bleed tone="sunk" className="pp-cu">
+      <h1 className="t-display">{t.title}</h1>
+      <p className="t-ink-2">{t.body}</p>
+      <div className="pp-row pp-cu-actions">
+        <ButtonLink to="/" variant="primary" size="lg" icon={Upload}>{t.sendFiles}</ButtonLink>
+        <ButtonLink to="/track" size="lg" icon={Search}>{t.track}</ButtonLink>
       </div>
     </Bleed>
   );

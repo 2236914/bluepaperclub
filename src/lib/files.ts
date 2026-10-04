@@ -43,17 +43,44 @@ export function mimeFor(name: string, fallback = 'application/octet-stream'): st
   }
 }
 
-/** Returns a customer-facing reason, or null when the file is fine. */
-export function validateFile(file: { name: string; size: number }): string | null {
-  if (!fileKind(file.name)) {
-    const ext = extensionOf(file.name);
-    return ext
-      ? `We can't print .${ext} files. Save it as a PDF and try again.`
-      : `We can't tell what kind of file this is. Upload a PDF, Word file, JPG or PNG.`;
-  }
-  if (file.size > MAX_FILE_BYTES) return 'This file is over 20 MB. Try a smaller file or split it in two.';
-  if (file.size === 0) return 'This file is empty.';
+/**
+ * What is wrong with a file, as a code the UI turns into words in the
+ * customer's language:
+ *   unsupported  a type we can't print (.xlsx, .heic…)
+ *   unknownType  no extension, so we can't tell what it is
+ *   tooBig       over MAX_FILE_BYTES
+ *   empty        0 bytes
+ */
+export type FileProblem = 'unsupported' | 'unknownType' | 'tooBig' | 'empty';
+
+export function fileProblem(file: { name: string; size: number }): FileProblem | null {
+  if (!fileKind(file.name)) return extensionOf(file.name) ? 'unsupported' : 'unknownType';
+  if (file.size > MAX_FILE_BYTES) return 'tooBig';
+  if (file.size === 0) return 'empty';
   return null;
+}
+
+/** English reason for a problem (the API and server-side checks use these words). */
+export function problemText(problem: FileProblem, name: string): string {
+  switch (problem) {
+    case 'unsupported': return `We can't print .${extensionOf(name)} files. Save it as a PDF and try again.`;
+    case 'unknownType': return "We can't tell what kind of file this is. Upload a PDF, Word file, JPG or PNG.";
+    case 'tooBig': return 'This file is over 20 MB. Try a smaller file or split it in two.';
+    case 'empty': return 'This file is empty.';
+  }
+}
+
+/** Returns a customer-facing reason in English, or null when the file is fine. UI code uses fileProblem() and translates. */
+export function validateFile(file: { name: string; size: number }): string | null {
+  const problem = fileProblem(file);
+  return problem ? problemText(problem, file.name) : null;
+}
+
+/** Splits a pick into what fits under MAX_FILES and how many were left out. */
+export function takeFiles<T>(alreadyAdded: number, incoming: T[], max = MAX_FILES): { accepted: T[]; skipped: number } {
+  const room = Math.max(0, max - alreadyAdded);
+  const accepted = incoming.slice(0, room);
+  return { accepted, skipped: incoming.length - accepted.length };
 }
 
 /**

@@ -2,21 +2,32 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { Bleed, Button, Field } from '../design/components';
-import { OrderForm } from '../shared/OrderForm';
+import { useI18n } from '../i18n';
+import { getRemembered } from '../lib/remember';
 import { normalizeOrderCode } from '../lib/orderCode';
+import { GuidedOrder } from '../shared/GuidedOrder';
+import { OrderForm, type SubmittedOrder } from '../shared/OrderForm';
+import { usePreferences } from '../shared/Preferences';
 
-const STEPS = [
-  { title: 'Upload your files', body: 'Add PDFs, Word files or photos, then choose paper, color and copies.' },
-  { title: 'Get your order ID', body: 'We email it to you right away. Keep it for tracking and pickup.' },
-  { title: 'Track your order', body: 'Check the status anytime with your order ID and email.' },
-  { title: 'Claim at the counter', body: 'When it says Ready for pickup, show your order ID and pay at the shop.' },
-];
+/** What the order-received page gets in its router state right after a submit. */
+export interface ReceivedRouteState {
+  email: string | null;
+  name: string;
+  phone: string | null;
+  remembered: boolean;
+  justSubmitted: true;
+}
+
+const CODE_EXAMPLE = 'PRT-7K3QM';
 
 export function SendFilesPage() {
   const navigate = useNavigate();
   const { hash } = useLocation();
+  const { m } = useI18n();
+  const t = m.customer.home;
+  const { prefs } = usePreferences();
   const [code, setCode] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => getRemembered()?.email ?? '');
 
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
@@ -27,31 +38,32 @@ export function SendFilesPage() {
     navigate('/track', { state: { code: normalizeOrderCode(code), email } });
   };
 
+  const onSubmitted = ({ code: newCode, email: sentEmail, name, phone, remembered }: SubmittedOrder) => {
+    const state: ReceivedRouteState = { email: sentEmail, name, phone, remembered, justSubmitted: true };
+    navigate(`/order/${newCode}`, { state });
+  };
+
+  const OrderComponent = prefs.guided ? GuidedOrder : OrderForm;
+
   return (
-    <>
+    <div className="pp-cu">
       <Bleed tone="inverse" className="pp-hero">
-        <h1 className="t-display-xl" style={{ maxWidth: 760 }}>Send your files. Pick them up printed.</h1>
-        <p className="pp-hero-copy">
-          Upload your documents, choose how they should be printed, and we'll email you an order ID. Use it to track your
-          order and to claim it at the counter.
-        </p>
-        <p className="pp-hero-services">Printing · Xerox · Scanning · Lamination · Binding</p>
+        <h1 className="t-display-xl pp-cu-hero-title">{t.heroTitle}</h1>
+        <p className="pp-hero-copy">{t.heroCopy}</p>
+        <p className="pp-hero-services">{t.services}</p>
       </Bleed>
 
-      <section className="pp-section" aria-label="Send files">
+      <section className="pp-section" aria-label={t.formLabel}>
         <div className="pp-container">
-          <OrderForm
-            mode="customer"
-            onSubmitted={({ code, email, name }) => navigate(`/order/${code}`, { state: { email, name } })}
-          />
+          <OrderComponent mode="customer" onSubmitted={onSubmitted} />
         </div>
       </section>
 
-      <Bleed tone="block" id="how" title="How it works">
+      <Bleed tone="block" id="how" title={t.howTitle}>
         <ol className="pp-how">
-          {STEPS.map((s, i) => (
-            <li key={s.title}>
-              <span className="t-meta" style={{ color: 'var(--on-block)' }}>Step {i + 1}</span>
+          {t.steps.map((s, i) => (
+            <li key={i}>
+              <span className="t-meta pp-cu-on-block">{t.stepLabel(i + 1)}</span>
               <h3 className="t-title">{s.title}</h3>
               <p>{s.body}</p>
             </li>
@@ -61,17 +73,34 @@ export function SendFilesPage() {
 
       <Bleed tone="sunk">
         <div className="pp-quick-track">
-          <div className="pp-stack-2" style={{ flex: '1 1 300px' }}>
-            <h2 className="t-title">Already sent your files?</h2>
-            <p className="t-ink-2">Enter your order ID and email to see where your order is.</p>
+          <div className="pp-stack-2 pp-cu-quick-copy">
+            <h2 className="t-title">{t.quickTitle}</h2>
+            <p className="t-ink-2">{t.quickBody}</p>
           </div>
           <form className="pp-quick-track-form" onSubmit={track}>
-            <Field label="Order ID" placeholder="PRT-7K3QM" value={code} onChange={(e) => setCode(e.target.value)} inputClassName="t-mono-id" autoCapitalize="characters" />
-            <Field label="Email" type="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <Button type="submit" icon={Search}>Track order</Button>
+            <Field
+              label={t.orderIdLabel}
+              placeholder={CODE_EXAMPLE}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              inputClassName="t-mono-id"
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <Field
+              label={t.emailLabel}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder={t.emailPlaceholder}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Button type="submit" size="lg" icon={Search}>{t.quickSubmit}</Button>
           </form>
         </div>
       </Bleed>
-    </>
+    </div>
   );
 }

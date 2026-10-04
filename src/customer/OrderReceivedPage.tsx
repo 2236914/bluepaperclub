@@ -1,75 +1,111 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Check, Plus, Search } from 'lucide-react';
 import { api, type Order } from '../api';
 import { Bleed, Button, ButtonLink, Card, Field, Icon, Skeleton } from '../design/components';
-import { filesSummary, firstName, formatDateTime } from '../lib/format';
+import { useI18n } from '../i18n';
 import { isValidOrderCode, normalizeOrderCode } from '../lib/orderCode';
+import { getRemembered, listRecentOrders } from '../lib/remember';
 import { CopyCodeButton, FileListReadOnly, SettingsList } from '../shared/OrderBits';
 import { useShop } from '../shared/ShopContext';
+import { ThankYouDialog } from '../shared/ThankYouDialog';
 
 interface ReceivedState {
   email?: string | null;
   name?: string;
+  phone?: string | null;
+  remembered?: boolean;
+  /** set by the send-files page; shows the thank-you popup once */
+  justSubmitted?: boolean;
+}
+
+function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? '';
 }
 
 export function OrderReceivedPage() {
   const { code: rawCode = '' } = useParams();
   const code = normalizeOrderCode(rawCode);
-  const state = (useLocation().state ?? {}) as ReceivedState;
+  const location = useLocation();
+  const state = (location.state ?? {}) as ReceivedState;
   const navigate = useNavigate();
   const { shop } = useShop();
-  const [order, setOrder] = useState<Order | null | undefined>(state.email ? undefined : null);
-  const [email, setEmail] = useState('');
+  const { m, fmt } = useI18n();
+  const t = m.customer.received;
+
+  // The email from the submit, or the one this phone saved with the order ("remember me").
+  const knownEmail = state.email ?? listRecentOrders().find((o) => o.code === code)?.email ?? null;
+  const [order, setOrder] = useState<Order | null | undefined>(knownEmail ? undefined : null);
+  const [email, setEmail] = useState(() => getRemembered()?.email ?? '');
+
+  // Thank-you popup: once, right after a submit. Clear the flag in history so a refresh doesn't show it again.
+  const [thanksOpen, setThanksOpen] = useState(() => state.justSubmitted === true);
+  const [submitted] = useState(() => state);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const wasOpen = useRef(thanksOpen);
 
   useEffect(() => {
-    if (!state.email) return;
+    if (state.justSubmitted) {
+      navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: { ...state, justSubmitted: false } });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // After the popup closes, carry on from the page heading.
+    if (wasOpen.current && !thanksOpen) headingRef.current?.focus();
+    wasOpen.current = thanksOpen;
+  }, [thanksOpen]);
+
+  useEffect(() => {
+    if (!knownEmail) return;
     let live = true;
-    api.trackOrder(code, state.email).then(
+    api.trackOrder(code, knownEmail).then(
       (o) => live && setOrder(o),
       () => live && setOrder(null),
     );
     return () => {
       live = false;
     };
-  }, [code, state.email]);
+  }, [code, knownEmail]);
 
   const goTrack = (e?: FormEvent) => {
     e?.preventDefault();
-    navigate('/track', { state: { code, email: state.email ?? email } });
+    navigate('/track', { state: { code, email: knownEmail ?? email } });
   };
 
   if (!isValidOrderCode(code)) {
     return (
-      <Bleed tone="sunk">
-        <h1 className="t-display">That isn't an order ID</h1>
-        <p className="t-ink-2">Order IDs look like PRT-7K3QM. Check the link in your email, or track your order by ID.</p>
-        <div><ButtonLink to="/track" icon={Search}>Track an order</ButtonLink></div>
+      <Bleed tone="sunk" className="pp-cu">
+        <h1 className="t-display">{t.badIdTitle}</h1>
+        <p className="t-ink-2">{t.badIdBody}</p>
+        <div className="pp-row pp-cu-actions">
+          <ButtonLink to="/track" size="lg" icon={Search}>{t.badIdAction}</ButtonLink>
+        </div>
       </Bleed>
     );
   }
 
   const name = state.name ?? order?.customerName;
+  const first = name ? firstNameOf(name) : '';
 
   return (
-    <>
+    <div className="pp-cu">
       <Bleed tone="inverse" className="pp-hero">
         <span className="mn-tag pp-tag-on-inverse">
           <Icon icon={Check} size={12} />
-          Order received
+          {t.tag}
         </span>
-        <h1 className="t-display">{name ? `Thanks, ${firstName(name)}. We have your files.` : 'We have your files.'}</h1>
+        <h1 className="t-display" ref={headingRef} tabIndex={-1}>
+          {first ? t.thanks(first) : t.thanksNoName}
+        </h1>
         <div className="pp-stack-2">
-          <span className="t-label on-inverse">Your order ID</span>
+          <span className="t-label on-inverse">{t.yourOrderId}</span>
           <p className="pp-order-id">{code}</p>
         </div>
-        <p className="pp-hero-copy">
-          {state.email
-            ? `We emailed it to ${state.email}. Keep it to track your order and to claim it at the counter.`
-            : 'Keep it to track your order and to claim it at the counter.'}
-        </p>
-        <div className="pp-row">
-          <Button variant="primary" size="lg" icon={Search} onClick={() => goTrack()}>Track this order</Button>
+        <p className="pp-hero-copy pp-cu-break">{state.email ? t.emailed(state.email) : t.keepIt}</p>
+        <div className="pp-row pp-cu-actions">
+          <Button variant="primary" size="lg" icon={Search} onClick={() => goTrack()}>{t.trackThis}</Button>
           <CopyCodeButton code={code} size="lg" />
         </div>
       </Bleed>
@@ -77,44 +113,54 @@ export function OrderReceivedPage() {
       <section className="pp-section">
         <div className="pp-container pp-two-col">
           {order === undefined ? (
-            <Card title="Order summary" aria-busy="true">
+            <Card title={t.summaryTitle} aria-busy="true">
               <Skeleton lines={4} />
             </Card>
           ) : order ? (
-            <Card title="Order summary" meta={`Submitted ${formatDateTime(order.createdAt)} · ${filesSummary(order)}`} className="pp-stack">
+            <Card title={t.summaryTitle} meta={t.submitted(fmt.dateTime(order.createdAt), fmt.filesSummary(order))} className="pp-stack">
               <FileListReadOnly files={order.files} />
               <hr className="pp-divider" />
               <SettingsList order={order} />
               {order.notes && (
                 <div className="pp-note">
-                  <span className="t-label">Your notes</span>
+                  <span className="t-label">{t.yourNotes}</span>
                   <p className="t-ink-2">{order.notes}</p>
                 </div>
               )}
             </Card>
           ) : (
-            <Card title="See your order details" className="pp-stack">
-              <p className="t-ink-2">Enter the email you used when you sent your files.</p>
-              <form className="pp-quick-track-form" onSubmit={goTrack}>
-                <Field label="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                <Button type="submit" icon={Search}>Show order</Button>
+            <Card title={t.detailsTitle} className="pp-stack">
+              <p className="t-ink-2">{t.detailsBody}</p>
+              <form className="pp-quick-track-form pp-cu-form" onSubmit={goTrack}>
+                <Field label={t.emailLabel} type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Button type="submit" size="lg" icon={Search}>{t.showOrder}</Button>
               </form>
             </Card>
           )}
 
-          <Card tone="sunk" title="What happens next" className="pp-stack">
+          <Card tone="sunk" title={t.nextTitle} className="pp-stack">
             <ol className="pp-next">
-              <li><span className="t-meta">1</span><p>We check your files. If something won't print well, we email you before printing.</p></li>
-              <li><span className="t-meta">2</span><p>We print your order and email you when it's ready for pickup.</p></li>
-              <li><span className="t-meta">3</span><p>Claim it at {shop.address}. Show your order ID and pay at the counter.</p></li>
+              {[...t.next, t.nextClaim(shop.address)].map((line, i) => (
+                <li key={i}><span className="t-meta">{i + 1}</span><p>{line}</p></li>
+              ))}
             </ol>
-            <p className="t-small" style={{ paddingTop: 12, borderTop: '1px solid var(--line-soft)' }}>
-              No email after a few minutes? Check your spam folder, or call us at {shop.phone}.
-            </p>
-            <div><ButtonLink to="/" icon={Plus}>Send more files</ButtonLink></div>
+            <p className="t-small pp-cu-rule">{t.noEmail(shop.phone)}</p>
+            <div className="pp-cu-actions"><ButtonLink to="/" size="lg" icon={Plus}>{t.sendMore}</ButtonLink></div>
           </Card>
         </div>
       </section>
-    </>
+
+      {submitted.justSubmitted && (
+        <ThankYouDialog
+          open={thanksOpen}
+          onClose={() => setThanksOpen(false)}
+          code={code}
+          name={submitted.name ?? ''}
+          email={submitted.email ?? null}
+          phone={submitted.phone ?? null}
+          remembered={submitted.remembered === true}
+        />
+      )}
+    </div>
   );
 }

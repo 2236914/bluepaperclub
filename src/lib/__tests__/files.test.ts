@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_FILE_BYTES, countPdfPagesInText, fileKind, typeLabel, validateFile } from '../files';
+import { MAX_FILE_BYTES, MAX_FILES, countPdfPagesInText, fileKind, fileProblem, takeFiles, typeLabel, validateFile } from '../files';
 
 describe('file rules', () => {
   it('accepts PDF, Word, JPG and PNG only', () => {
@@ -17,6 +17,24 @@ describe('file rules', () => {
     expect(validateFile({ name: 'sheet.xlsx', size: 10 })).toMatch(/\.xlsx/);
     expect(validateFile({ name: 'noext', size: 10 })).toMatch(/can't tell/);
     expect(validateFile({ name: 'empty.png', size: 0 })).toMatch(/empty/);
+  });
+
+  it('gives a problem code the UI can translate', () => {
+    expect(fileProblem({ name: 'ok.pdf', size: 1000 })).toBeNull();
+    expect(fileProblem({ name: 'ok.docx', size: MAX_FILE_BYTES })).toBeNull();
+    expect(fileProblem({ name: 'big.pdf', size: MAX_FILE_BYTES + 1 })).toBe('tooBig');
+    expect(fileProblem({ name: 'sheet.xlsx', size: 10 })).toBe('unsupported');
+    expect(fileProblem({ name: 'noext', size: 10 })).toBe('unknownType');
+    expect(fileProblem({ name: 'empty.png', size: 0 })).toBe('empty');
+    // the type is checked before the size, as in validateFile
+    expect(fileProblem({ name: 'huge.xlsx', size: MAX_FILE_BYTES + 1 })).toBe('unsupported');
+  });
+
+  it('keeps an order to the file limit and counts what was left out', () => {
+    expect(takeFiles(0, ['a', 'b'])).toEqual({ accepted: ['a', 'b'], skipped: 0 });
+    expect(takeFiles(MAX_FILES - 1, ['a', 'b', 'c'])).toEqual({ accepted: ['a'], skipped: 2 });
+    expect(takeFiles(MAX_FILES, ['a'])).toEqual({ accepted: [], skipped: 1 });
+    expect(takeFiles(12, ['a'])).toEqual({ accepted: [], skipped: 1 });
   });
 
   it('counts PDF pages without counting the page tree', () => {
