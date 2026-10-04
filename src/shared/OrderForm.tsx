@@ -31,9 +31,19 @@ interface PickedFile {
 
 type FieldName = 'files' | 'name' | 'email' | 'phone' | 'copies' | 'consent';
 
+/** What the form hands back after a successful submit. */
+export interface SubmittedOrder {
+  code: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  /** true when this device already remembers the customer (details and the order were saved here) */
+  remembered: boolean;
+}
+
 export interface OrderFormProps {
   mode: 'customer' | 'walk_in';
-  onSubmitted: (result: { code: string; email: string | null; name: string }) => void;
+  onSubmitted: (result: SubmittedOrder) => void;
 }
 
 let keySeq = 0;
@@ -152,7 +162,7 @@ export function OrderForm({ mode, onSubmitted }: OrderFormProps) {
           setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, progress: pct } : f)));
         },
       );
-      onSubmitted({ code, email: email.trim() || null, name: name.trim() });
+      onSubmitted({ code, email: email.trim() || null, name: name.trim(), phone: phone.trim() || null, remembered: false });
     } catch (err) {
       setSubmitError(errorMessage(err));
       setFiles((prev) => prev.map((f) => ({ ...f, progress: null })));
