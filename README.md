@@ -81,7 +81,7 @@ All screens talk to one `PortalApi` (`src/api/types.ts`), the interface from the
 
 ## Deploying the review build
 
-Cloudflare Pages: build command `npm run build`, output `dist`. `public/_redirects` sends every path to `index.html` so deep links work. For a static host without rewrites, build with `VITE_ROUTER=hash` (URLs become `/#/track`). See `.env.example`.
+Cloudflare Pages: build command `npm run build`, output `dist`. `public/_redirects` sends every path to `index.html` so deep links work. For a static host without rewrites, build with `VITE_ROUTER=hash` (URLs become `/#/track`); `VITE_ROUTER=memory` leaves the URL alone for embedded previews. See `.env.example`.
 
 ## Not in this phase
 

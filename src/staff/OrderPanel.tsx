@@ -184,7 +184,7 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
     try {
       const url = await api.getFileUrl(file.id, fileKind(file.originalName) === 'word' ? 'pdf' : 'original');
       if (win) win.location.href = url;
-      else window.location.href = url;
+      else toast.error('Your browser blocked the new tab. Allow pop-ups for this site, or download the file instead.');
     } catch (err) {
       win?.close();
       toast.error(errorMessage(err));

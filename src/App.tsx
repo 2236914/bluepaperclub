@@ -1,4 +1,4 @@
-import { RouterProvider, createBrowserRouter, createHashRouter, Navigate, type RouteObject } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter, createHashRouter, createMemoryRouter, Navigate, type RouteObject } from 'react-router-dom';
 import { Toaster } from './design/components';
 import { CustomerLayout } from './customer/CustomerLayout';
 import { SendFilesPage } from './customer/SendFilesPage';
@@ -49,8 +49,10 @@ const routes: RouteObject[] = [
   { element: <CustomerLayout />, children: [{ path: '*', element: <NotFoundPage /> }] },
 ];
 
-// Cloudflare Pages serves index.html for every path (public/_redirects). Hosts without rewrites use #/ URLs.
-const router = import.meta.env.VITE_ROUTER === 'hash' ? createHashRouter(routes) : createBrowserRouter(routes);
+// Cloudflare Pages serves index.html for every path (public/_redirects). Hosts without rewrites use #/ URLs;
+// `memory` keeps the URL untouched for embedded previews.
+const mode = import.meta.env.VITE_ROUTER;
+const router = mode === 'hash' ? createHashRouter(routes) : mode === 'memory' ? createMemoryRouter(routes) : createBrowserRouter(routes);
 
 export function App() {
   return (
