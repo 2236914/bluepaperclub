@@ -16,6 +16,7 @@ export const SEED_SHOP: ShopSettings = {
   phone: '[PHONE]',
   email: 'orders@[yourshop].com',
   unclaimedDays: 30,
+  messengerPage: 'bluepaperclub',
 };
 
 type SeedFile = [name: string, pages: number | null, sizeBytes: number, conversion?: OrderFile['conversion']];
@@ -39,6 +40,7 @@ interface SeedOrder {
   readyMinsAgo?: number;
   claimedMinsAgo?: number;
   issue?: { minsAgo: number; message: string };
+  messengerMinsAgo?: number;
 }
 
 const MB = 1024 * 1024;
@@ -62,7 +64,7 @@ const ORDERS: SeedOrder[] = [
   },
   {
     code: 'PRT-7K3QM', name: 'Juan Dela Cruz', email: 'juan.delacruz@gmail.com', minsAgo: 42, status: 'printing',
-    paper: 'long', color: 'bw', sides: 'two', copies: 2, printingMinsAgo: 20,
+    paper: 'long', color: 'bw', sides: 'two', copies: 2, printingMinsAgo: 20, messengerMinsAgo: 40,
     notes: 'Please staple each chapter separately.',
     files: [['Thesis_Chapters_1-3.pdf', 48, 3.4 * MB], ['Enrollment_Form.docx', 2, 0.09 * MB, 'done'], ['ID_Photo_2x2.jpg', 1, 0.7 * MB]],
   },
@@ -137,8 +139,12 @@ export function buildSeed(now = Date.now()): Seed {
     if (s.email) {
       events.push({ type: 'email', message: `Order received email sent to ${s.email}`, actor: 'system', createdAt: at(s.minsAgo) });
     }
+    if (s.messengerMinsAgo != null) {
+      events.push({ type: 'messenger', message: 'Customer connected Messenger · Order received message sent', actor: 'system', createdAt: at(s.messengerMinsAgo) });
+    }
     if (s.printingMinsAgo != null) {
       events.push({ type: 'status_change', fromStatus: 'received', toStatus: 'printing', actor: 'agent', createdAt: at(s.printingMinsAgo) });
+      if (s.messengerMinsAgo != null) events.push({ type: 'messenger', message: 'Printing message sent on Messenger', actor: 'system', createdAt: at(s.printingMinsAgo) });
       files.forEach((f, j) => {
         const passes: PrintJob['pass'][] = s.sides === 'two' && (f.pages ?? 1) > 1 ? ['odd'] : ['all'];
         // Finished orders printed both sides; the live one is waiting for staff to flip the stack.
@@ -195,6 +201,7 @@ export function buildSeed(now = Date.now()): Seed {
       createdAt: at(s.minsAgo),
       readyAt: s.readyMinsAgo != null ? at(s.readyMinsAgo) : null,
       claimedAt: s.claimedMinsAgo != null ? at(s.claimedMinsAgo) : null,
+      messengerConnectedAt: s.messengerMinsAgo != null ? at(s.messengerMinsAgo) : null,
       files,
       events,
     });

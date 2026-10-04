@@ -16,6 +16,9 @@
  *   addFiles / replaceFile → request-uploads, PUT to R2, then a small
  *                     edit-files function that moves them into orders/<id>/
  *   removeFile      → delete the order_files row and its R2 objects
+ *   connectMessenger→ not called live: the messenger-webhook function links the
+ *                     customer's Page-scoped ID (PSID) from the m.me ref
+ *   messengerLink   → https://m.me/<shop.messengerPage>?ref=<order code>
  *
  * Until then every call says so clearly instead of failing somewhere deeper.
  */
@@ -51,4 +54,6 @@ export const supabaseApi: PortalApi = {
   addFiles: async () => notConnected(),
   replaceFile: async () => notConnected(),
   removeFile: async () => notConnected(),
+  connectMessenger: async () => notConnected(),
+  messengerLink: () => null,
 };

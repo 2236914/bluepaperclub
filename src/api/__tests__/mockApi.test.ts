@@ -142,3 +142,37 @@ describe('mock API: editing orders', () => {
     await expect(mockApi.addFiles(single.id, [new File(['x'], 'sheet.xlsx')])).rejects.toThrow(/\.xlsx/);
   });
 });
+
+describe('mock API: Messenger', () => {
+  beforeEach(async () => {
+    mockApi.resetSampleData();
+    await mockApi.signOut();
+  });
+
+  it('links an order to Messenger and sends status updates there', async () => {
+    expect(mockApi.messengerLink('PRT-H4WNE')).toBe('https://m.me/bluepaperclub?ref=PRT-H4WNE');
+    await expect(mockApi.connectMessenger('PRT-H4WNE', 'wrong@example.com')).rejects.toThrow(/could not find/);
+    await mockApi.connectMessenger('prt-h4wne', 'angelica.reyes@gmail.com');
+
+    await mockApi.signIn('ana.lopez@example.com', MOCK_PASSWORD);
+    const [order] = await mockApi.listOrders({ view: 'active', search: 'PRT-H4WNE' });
+    expect(order.messengerConnectedAt).toBeTruthy();
+    await mockApi.setStatus(order.id, 'ready', { emailCustomer: true });
+    const after = await mockApi.getOrder(order.id);
+    const msgs = after.events.filter((e) => e.type === 'messenger').map((e) => e.message);
+    expect(msgs).toEqual(['Customer connected Messenger · Order received message sent', 'Ready for pickup message sent on Messenger']);
+
+    // Unticking "notify" sends nothing anywhere.
+    await mockApi.setStatus(order.id, 'claimed', { emailCustomer: false });
+    expect((await mockApi.getOrder(order.id)).events.filter((e) => e.type === 'messenger')).toHaveLength(2);
+  });
+
+  it('turns off when the shop has no Page', async () => {
+    await mockApi.signIn('ana.lopez@example.com', MOCK_PASSWORD);
+    await mockApi.updateShop({ messengerPage: 'https://m.me/bluepaperclub' });
+    expect((await mockApi.getShop()).messengerPage).toBe('bluepaperclub');
+    await mockApi.updateShop({ messengerPage: '' });
+    expect(mockApi.messengerLink('PRT-H4WNE')).toBeNull();
+    await expect(mockApi.connectMessenger('PRT-H4WNE', 'angelica.reyes@gmail.com')).rejects.toThrow(/turned off/);
+  });
+});

@@ -29,7 +29,7 @@ import { PRINTER_FOR_PAPER } from '../lib/printers';
 import { isEmail, isToday } from '../lib/format';
 import { buildSampleImage, buildSamplePdf } from '../lib/samplePdf';
 
-const STORE_KEY = 'print-portal:mock:v1';
+const STORE_KEY = 'print-portal:mock:v2'; // v2: Messenger fields
 const SESSION_KEY = 'print-portal:mock:session';
 export const MOCK_PASSWORD = 'print123';
 
@@ -356,6 +356,8 @@ class MockApi implements PortalApi {
     if (opts.emailCustomer && order.email && template) {
       order.events.push({ type: 'email', message: `${template} email sent to ${order.email}`, actor: 'system', createdAt: at });
     }
+    // Messenger also gets Printing; it is chattier than email by design.
+    if (opts.emailCustomer && status !== 'received') this.messengerUpdate(order, status, at);
     this.save();
   }
 
@@ -476,6 +478,7 @@ class MockApi implements PortalApi {
       // The first print of an order moves it from Received to Printing.
       if (order && order.status === 'received') {
         order.events.push({ type: 'status_change', fromStatus: 'received', toStatus: 'printing', actor: 'agent', createdAt: nowIso() });
+        this.messengerUpdate(order, 'printing', nowIso());
         order.status = 'printing';
       }
       this.save();
@@ -525,6 +528,11 @@ class MockApi implements PortalApi {
     if (patch.email && !isEmail(patch.email)) throw new PortalError('Enter a valid email address.');
     if (patch.unclaimedDays !== undefined && (!Number.isInteger(patch.unclaimedDays) || patch.unclaimedDays < 1 || patch.unclaimedDays > 365)) {
       throw new PortalError('Keep unclaimed orders for 1 to 365 days.');
+    }
+    if (patch.messengerPage !== undefined) {
+      const page = patch.messengerPage.trim().replace(/^https?:\/\/(www\.)?(m\.me|facebook\.com)\//i, '').replace(/\/.*$/, '');
+      if (page && !/^[A-Za-z0-9.]{3,50}$/.test(page)) throw new PortalError('Enter the Facebook Page username, like bluepaperclub.');
+      patch = { ...patch, messengerPage: page };
     }
     this.state.shop = { ...this.state.shop, ...patch };
     this.save();
@@ -691,6 +699,41 @@ class MockApi implements PortalApi {
     order.events.push({ type: 'edit', message: `Removed ${file.originalName}`, actor: me.id, createdAt: nowIso() });
     this.save();
     return clone(order);
+  }
+
+  /* ---------- Messenger ---------- */
+
+  /** Logs the Messenger message the backend would send for a status, if the customer connected Messenger. */
+  private messengerUpdate(order: Order, status: OrderStatus, at: string): void {
+    if (!order.messengerConnectedAt || !this.state.shop.messengerPage) return;
+    const what: Partial<Record<OrderStatus, string>> = {
+      printing: 'Printing',
+      ready: 'Ready for pickup',
+      claimed: 'Thank-you',
+      file_issue: 'File issue',
+    };
+    if (!what[status]) return;
+    order.events.push({ type: 'messenger', message: `${what[status]} message sent on Messenger`, actor: 'system', createdAt: at });
+  }
+
+  async connectMessenger(code: string, email: string): Promise<void> {
+    await wait(600);
+    const normalized = normalizeOrderCode(code);
+    const order = this.state.orders.find((o) => o.code === normalized);
+    if (!order || !order.email || order.email.toLowerCase() !== email.trim().toLowerCase()) {
+      throw new PortalError('We could not find that order.', 'not_found');
+    }
+    if (!this.state.shop.messengerPage) throw new PortalError('Messenger updates are turned off for this shop.');
+    if (order.messengerConnectedAt) return;
+    const at = nowIso();
+    order.messengerConnectedAt = at;
+    order.events.push({ type: 'messenger', message: 'Customer connected Messenger · Order received message sent', actor: 'system', createdAt: at });
+    this.save();
+  }
+
+  messengerLink(code: string): string | null {
+    const page = this.state.shop.messengerPage?.trim();
+    return page ? `https://m.me/${encodeURIComponent(page)}?ref=${encodeURIComponent(code)}` : null;
   }
 
   /* ---------- review-only controls (not part of PortalApi) ---------- */

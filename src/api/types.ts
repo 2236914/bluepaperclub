@@ -21,7 +21,7 @@ export interface OrderFile {
 
 export interface OrderEvent {
   /** 'edit' is an addition: staff changed the order's details or files */
-  type: 'status_change' | 'note' | 'email' | 'print' | 'edit';
+  type: 'status_change' | 'note' | 'email' | 'print' | 'edit' | 'messenger';
   fromStatus?: OrderStatus;
   toStatus?: OrderStatus;
   message?: string;
@@ -48,6 +48,8 @@ export interface Order {
   /** addition: mirrors orders.ready_at / claimed_at */
   readyAt?: string | null;
   claimedAt?: string | null;
+  /** addition: set when the customer connected this order to Messenger (orders.messenger_psid in the backend) */
+  messengerConnectedAt?: string | null;
   files: OrderFile[];
   events: OrderEvent[];
 }
@@ -104,6 +106,8 @@ export interface ShopSettings {
   email: string;
   /** days an unclaimed Ready order is kept before its files are deleted */
   unclaimedDays: number;
+  /** the shop's Facebook Page username for m.me links, e.g. "bluepaperclub"; empty = Messenger updates off */
+  messengerPage: string;
 }
 
 export interface AgentStatus {
@@ -166,6 +170,16 @@ export interface PortalApi {
   replaceFile(fileId: string, file: File, onProgress?: (pct: number) => void): Promise<Order>;
   /** an order keeps at least one file */
   removeFile(fileId: string): Promise<Order>;
+
+  // addition: Messenger updates
+  /**
+   * Live: the customer taps "Get updates on Messenger" (m.me/<page>?ref=<code>), sends a message,
+   * and Meta's webhook links their Messenger account to the order; the backend replies automatically.
+   * Mock: the preview calls this to simulate that tap. Needs the order's email, like tracking.
+   */
+  connectMessenger(code: string, email: string): Promise<void>;
+  /** the m.me link that opens a chat with the shop's Page with the order attached, or null when Messenger is off */
+  messengerLink(code: string): string | null;
 }
 
 /** Thrown for problems the person can fix; `message` is shown as-is after "Error:". */
