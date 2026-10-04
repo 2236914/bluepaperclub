@@ -1,1 +1,77 @@
 /* Styles for the staff area. Tokens only (var(--…)), no raw colours; Monari rules: square, flat, 1px lines. */
+
+/* ---------- Language and text size (sidebar, phone menu, sign-in) ---------- */
+.pp-staff-display { display: flex; flex-direction: column; gap: var(--space-3); }
+.pp-staff-display-row { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.pp-staff-display-row .mn-seg { display: flex; width: 100%; }
+.pp-staff-display-row .mn-seg-opt {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  height: max(44px, var(--control-md));
+  padding: 0 var(--space-2);
+  font: 500 calc(14px * var(--ts, 1))/1 var(--font-sans);
+}
+.pp-staff-sizes .mn-seg-opt { font-family: var(--font-mono); }
+.pp-staff-size-normal { font-size: calc(13px * var(--ts, 1)); }
+.pp-staff-size-large { font-size: calc(16px * var(--ts, 1)); }
+.pp-staff-size-xlarge { font-size: calc(19px * var(--ts, 1)); }
+
+/* ---------- Order list ---------- */
+/* "Open" cue next to the status tag, so staff see that a row opens the order. */
+.pp-cell-tag { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); }
+.pp-order-row .t-mono-id { white-space: nowrap; }
+.pp-staff-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink-3);
+  font: 500 calc(12px * var(--ts, 1))/calc(16px * var(--ts, 1)) var(--font-mono);
+  white-space: nowrap;
+}
+.pp-order-row:hover .pp-staff-open,
+.pp-order-row:focus-visible .pp-staff-open,
+.pp-order-row[aria-current="true"] .pp-staff-open { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+/* Tags grow with the text instead of clipping at large sizes. */
+.pp-order-row .mn-tag { height: auto; min-height: 24px; padding-top: 2px; padding-bottom: 2px; }
+
+/* Messenger chip in the customer cell */
+.pp-staff-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  padding: 1px var(--space-2);
+  border: var(--border-hair) solid var(--line-soft);
+  background: var(--surface-sunk);
+  color: var(--ink-2);
+  font: 500 calc(11px * var(--ts, 1))/calc(16px * var(--ts, 1)) var(--font-mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.pp-staff-chip .mn-icon { width: calc(12px * var(--ts, 1)); height: calc(12px * var(--ts, 1)); }
+
+/* Table layout: the status column holds the tag plus "Buksan", and grows with the text size. */
+@container orders (min-width: 640px) {
+  .pp-orders-head,
+  .pp-order-row { grid-template-columns: calc(150px * var(--ts, 1)) minmax(0, 1.2fr) minmax(0, 1.3fr) calc(216px * var(--ts, 1)); }
+  .pp-cell-tag { justify-self: stretch; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); }
+}
+/* With extra large text the four columns need more room; keep the stacked rows a little longer. */
+@container orders (min-width: 640px) and (max-width: 879px) {
+  :root[data-text="xlarge"] .pp-orders-head { display: none; }
+  :root[data-text="xlarge"] .pp-order-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "code tag" "name name" "files files"; }
+  :root[data-text="xlarge"] .pp-cell-tag { justify-self: end; flex-direction: column; align-items: flex-end; }
+}
+
+/* Sidebar: labels may wrap in Filipino or with large text, so links grow instead of overlapping. */
+.pp-nav-link { height: auto; min-height: max(44px, var(--control-md)); padding-top: var(--space-1); padding-bottom: var(--space-1); }
+@media (min-width: 1024px) {
+  :root[data-text="large"] .pp-staff { grid-template-columns: 264px minmax(0, 1fr); }
+  :root[data-text="xlarge"] .pp-staff { grid-template-columns: 288px minmax(0, 1fr); }
+}
+.pp-search { width: calc(300px * var(--ts, 1)); }
+@media (max-width: 599px) { .pp-search { width: 100%; } }
+
+/* Sample account buttons on the sign-in page: a bigger hit area without changing the line. */
+.pp-login .pp-linkbtn { padding: var(--space-2) 0; }

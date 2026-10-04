@@ -87,6 +87,25 @@ export const en = {
     savedToList: 'This order is saved under "Your orders on this phone". You can find it under "Track an order".',
   },
 
+  /** "Get updates on Messenger" (thank-you popup and tracking result) */
+  messenger: {
+    button: 'Get updates on Messenger',
+    explain: "We'll message you when it's printing, ready to pick up, or if there's a problem with a file.",
+    dialogTitle: 'Get updates on Messenger',
+    howTitle: 'What happens',
+    how: [
+      'Messenger opens a chat with our Facebook Page. Your order ID is already attached.',
+      'Tap Send once.',
+      "From then on, we message you there by ourselves: when we get your order, when it's printing, when it's ready to pick up, and if a file has a problem.",
+    ],
+    why: 'Facebook only lets a shop message people who messaged its Page first. That is why the one tap is needed. It is free.',
+    previewNote: 'This is a preview, so there is no real Facebook Page yet. On the live site, the button opens this link:',
+    linkLabel: 'Messenger link',
+    simulate: 'Simulate: I sent the message',
+    connectedTitle: 'Connected to Messenger',
+    connectedBody: "We'll message you on Messenger when there is news about this order.",
+  },
+
   /** 404 */
   notFound: {
     title: "This page doesn't exist",
@@ -200,6 +219,24 @@ export const fil: typeof en = {
     rememberedNow: 'Sige po. Tanda na ng phone na ito ang inyong detalye at ang order na ito.',
     notRemembered: 'Sige po. Walang na-save sa phone na ito.',
     savedToList: 'Naka-save na ang order na ito sa "Mga order ninyo sa phone na ito". Makikita ninyo ito kapag pinindot ang "Tingnan ang order".',
+  },
+
+  messenger: {
+    button: 'Kumuha ng update sa Messenger',
+    explain: 'Ime-message namin kayo kapag pinipi-print na, handa nang kunin, o may problema sa file.',
+    dialogTitle: 'Kumuha ng update sa Messenger',
+    howTitle: 'Ano ang mangyayari',
+    how: [
+      'Magbubukas ang Messenger na may chat sa Facebook Page ng shop. Kasama na roon ang inyong order ID.',
+      'Pindutin ang Send nang isang beses.',
+      'Mula noon, kusa namin kayong ime-message doon: kapag natanggap na ang order, pinipi-print na, handa nang kunin, o may problema sa file.',
+    ],
+    why: 'Pinapayagan lang ng Facebook ang isang shop na mag-message sa taong nag-message muna sa Page nito. Kaya kailangan ang isang pindot na ito. Libre ito.',
+    previewNote: 'Preview pa lang ito, kaya wala pang totoong Facebook Page. Sa totoong site, bubuksan ng button ang link na ito:',
+    linkLabel: 'Link sa Messenger',
+    simulate: 'Kunwari: naipadala ko na ang message',
+    connectedTitle: 'Naka-connect sa Messenger',
+    connectedBody: 'Ime-message namin kayo sa Messenger kapag may balita sa order na ito.',
   },
 
   notFound: {

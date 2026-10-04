@@ -1,1 +1,107 @@
 /* Styles for the help area. Tokens only (var(--…)), no raw colours; Monari rules: square, flat, 1px lines. */
+
+/* Visually hidden, still read by screen readers (live regions). */
+.pp-help-vh { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- Joined option row (language, text size) ---------- */
+.pp-help-seg { display: inline-flex; flex-wrap: nowrap; border: var(--border-hair) solid var(--line); background: var(--surface); max-width: 100%; }
+.pp-help-seg-opt {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-width: max(44px, var(--control-lg)); min-height: max(44px, calc(var(--control-lg) - 2px)); padding: 0 var(--space-4);
+  border: 0; border-left: var(--border-hair) solid var(--line); border-radius: var(--radius-0);
+  background: transparent; color: var(--ink); cursor: pointer; white-space: nowrap;
+  font: 600 calc(15px * var(--ts, 1))/1 var(--font-sans);
+}
+.pp-help-seg-opt:first-child { border-left: 0; }
+.pp-help-seg-opt:hover { background: var(--surface-sunk); }
+.pp-help-seg-opt[aria-pressed="true"] { background: var(--inverse); color: var(--on-inverse); }
+.pp-help-seg-opt:focus-visible, .pp-help-tile:focus-visible { position: relative; z-index: 1; outline: var(--border-strong) solid var(--focus); outline-offset: 2px; }
+:root[data-contrast="high"] :is(.pp-help-seg-opt, .pp-help-tile):focus-visible { outline-width: 3px; }
+
+/* The A / A+ / A++ glyphs grow a little so the choice reads at a glance. */
+.pp-help-glyph { font-family: var(--font-sans); font-weight: 600; line-height: 1; }
+.pp-help-size-normal .pp-help-glyph { font-size: calc(15px * var(--ts, 1)); }
+.pp-help-size-large .pp-help-glyph { font-size: calc(18px * var(--ts, 1)); }
+.pp-help-size-xlarge .pp-help-glyph { font-size: calc(21px * var(--ts, 1)); }
+
+/* ---------- Big separate tiles (welcome popup) ---------- */
+.pp-help-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); }
+.pp-help-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1);
+  min-height: calc(56px * var(--cs, 1)); padding: var(--space-2) var(--space-3);
+  border: var(--border-hair) solid var(--line); border-radius: var(--radius-0);
+  background: var(--surface); color: var(--ink); cursor: pointer;
+  font: 600 calc(17px * var(--ts, 1))/1.2 var(--font-sans); text-align: center;
+}
+.pp-help-tile:hover { background: var(--surface-sunk); }
+.pp-help-tile[aria-pressed="true"] { background: var(--inverse); border-color: var(--inverse); color: var(--on-inverse); }
+.pp-help-tile-word { font: 500 calc(13px * var(--ts, 1))/calc(16px * var(--ts, 1)) var(--font-sans); }
+
+/* ---------- EasyBar ---------- */
+.pp-easybar { background: var(--surface-sunk); border-bottom: var(--border-hair) solid var(--line-soft); color: var(--ink); }
+.pp-easybar-inner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-6); padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.pp-easybar-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); min-width: 0; }
+.pp-easybar-label { font: 500 calc(11px * var(--ts, 1))/calc(16px * var(--ts, 1)) var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.pp-easybar-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-left: auto; }
+.pp-easybar-actions .mn-btn { background: var(--surface); min-height: 44px; }
+@media (max-width: 599px) {
+  .pp-easybar-inner { gap: var(--space-3) var(--space-4); }
+  .pp-easybar-group { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .pp-easybar-actions { margin-left: 0; width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+  .pp-easybar-actions .mn-btn { width: 100%; padding: 0 var(--space-3); }
+  .pp-easybar .pp-help-seg-opt { padding: 0 var(--space-3); }
+}
+/* Very big text on a phone: let the buttons' words wrap rather than run off. */
+:root[data-text="xlarge"] .pp-easybar-actions .mn-btn { white-space: normal; height: auto; min-height: var(--control-lg); line-height: 1.15; padding-top: var(--space-2); padding-bottom: var(--space-2); }
+
+/* ---------- Settings dialog ---------- */
+.pp-help-prefs { display: flex; flex-direction: column; gap: var(--space-4); color: var(--ink); }
+.pp-help-prefs-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding-bottom: var(--space-4); border-bottom: var(--border-hair) solid var(--line-soft); }
+.pp-help-switch { display: flex; align-items: flex-start; gap: var(--space-4); padding: var(--space-2) 0; }
+.pp-help-switch label { font-weight: 600; font-size: calc(15px * var(--ts, 1)); line-height: calc(22px * var(--ts, 1)); }
+.pp-help-switch .mn-switch-track { width: 52px; height: 32px; margin-top: 2px; }
+.pp-help-switch .mn-switch-thumb { top: 5px; left: 5px; width: 20px; height: 20px; }
+.pp-help-switch .mn-switch-track[aria-checked="true"] .mn-switch-thumb { left: 25px; }
+/* the whole row is the target: the track plus its label */
+.pp-help-switch .mn-check-text { flex: 1; min-width: 0; padding-top: 4px; }
+
+/* ---------- Welcome ---------- */
+.pp-help-welcome { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-6); color: var(--ink); }
+.pp-help-welcome > .mn-btn { align-self: flex-start; }
+.pp-help-welcome-part { display: flex; flex-direction: column; gap: var(--space-3); }
+.pp-help-welcome-h { margin: 0; font: 600 calc(17px * var(--ts, 1))/calc(24px * var(--ts, 1)) var(--font-sans); color: var(--ink); }
+.pp-help-sample { margin: 0; padding: var(--space-3); border: var(--border-hair) dashed var(--line); background: var(--surface-sunk); color: var(--ink); font-size: calc(16px * var(--ts, 1)); line-height: 1.4; }
+.pp-help-choices { display: flex; flex-direction: column; gap: var(--space-2); }
+.mn-btn.pp-help-choice { width: 100%; height: auto; min-height: var(--control-lg); justify-content: flex-start; text-align: left; white-space: normal; padding: var(--space-3) var(--space-4); gap: var(--space-3); line-height: 1.25; }
+.pp-help-choice-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pp-help-choice-title { font-weight: 600; }
+.pp-help-choice-hint { font-weight: 400; font-size: calc(13px * var(--ts, 1)); line-height: calc(18px * var(--ts, 1)); }
+.pp-help-updates { margin: 0; padding-top: var(--space-3); border-top: var(--border-hair) solid var(--line-soft); color: var(--ink-2); }
+
+/* ---------- Tour ---------- */
+.pp-tour { position: fixed; inset: 0; z-index: var(--z-popover); pointer-events: none; }
+.pp-tour-blocker { position: fixed; inset: 0; pointer-events: auto; }
+.pp-tour-spot {
+  position: fixed; pointer-events: none; box-sizing: border-box;
+  outline: 3px solid var(--inverse); outline-offset: 0;
+  box-shadow: 0 0 0 200vmax var(--overlay);
+}
+.pp-tour-card {
+  position: fixed; top: var(--space-4); left: var(--space-4); pointer-events: auto;
+  width: min(400px, calc(100vw - 2 * var(--space-4))); max-height: calc(100vh - 2 * var(--space-4)); overflow: auto;
+  box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-4); background: var(--surface); color: var(--ink);
+  border: var(--border-hair) solid var(--line); outline: none;
+}
+.pp-tour-card:focus-visible { outline: var(--border-strong) solid var(--focus); outline-offset: 2px; }
+.pp-tour-card.is-docked {
+  top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62vh;
+  border-width: var(--border-hair) 0 0; padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+}
+.pp-tour-count, .pp-tour-title, .pp-tour-body { margin: 0; }
+.pp-tour-body { font-size: calc(16px * var(--ts, 1)); line-height: 1.45; color: var(--ink); }
+.pp-tour-nav { display: flex; flex-wrap: wrap; gap: var(--space-2); width: 100%; }
+.pp-tour-nav .mn-btn { flex: 1 1 auto; min-height: 44px; }
+.pp-tour-skip.mn-btn { align-self: stretch; min-height: 44px; text-decoration: underline; text-underline-offset: 3px; }
+/* keep the words under A / A+ / A++ on one line across the tiles */
+.pp-help-tile .pp-help-glyph { display: flex; align-items: flex-end; min-height: calc(22px * var(--ts, 1)); }

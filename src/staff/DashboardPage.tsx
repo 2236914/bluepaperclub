@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Inbox, Plus, Search, SearchX } from 'lucide-react';
+import { ChevronRight, Inbox, MessageCircle, Plus, Search, SearchX } from 'lucide-react';
 import { api, type Order, type OrderView } from '../api';
-import { Alert, Button, ButtonLink, Card, Drawer, EmptyState, Field, Segmented, Skeleton, StatusTag, toast } from '../design/components';
-import { filesSummary, formatDuration, formatLongDay, formatWhen, plural, settingsSummary } from '../lib/format';
+import { Alert, Button, ButtonLink, Card, Drawer, EmptyState, Field, Icon, Segmented, Skeleton, StatusTag, toast } from '../design/components';
+import { useI18n } from '../i18n';
 import { useDebounced, useLive, useMediaQuery, useNow } from '../shared/useLive';
 import { OrderPanel } from './OrderPanel';
 
-const VIEWS: Array<{ value: OrderView; label: string }> = [
-  { value: 'active', label: 'Active' },
-  { value: 'claimed', label: 'Claimed' },
-  { value: 'all', label: 'All' },
-];
+const VIEWS: OrderView[] = ['active', 'claimed', 'all'];
 
 function CountCard({ label, value, meta, strong }: { label: string; value?: number; meta: string; strong?: boolean }) {
   return (
@@ -24,6 +20,8 @@ function CountCard({ label, value, meta, strong }: { label: string; value?: numb
 }
 
 export function DashboardPage() {
+  const { m, fmt } = useI18n();
+  const t = m.staff.dashboard;
   const [params, setParams] = useSearchParams();
   const view = (params.get('view') as OrderView) || 'active';
   const selected = params.get('order');
@@ -58,9 +56,9 @@ export function DashboardPage() {
     if (known.current && !q) {
       const fresh = list.data.filter((o) => !known.current!.has(o.id) && o.status === 'received');
       fresh.forEach((o) =>
-        toast(`New order ${o.code} from ${o.customerName}`, {
+        toast(t.newOrderToast(o.code, o.customerName), {
           icon: Inbox,
-          action: { label: 'View', onClick: () => update({ order: o.id }) },
+          action: { label: t.view, onClick: () => update({ order: o.id }) },
         }),
       );
     }
@@ -76,53 +74,60 @@ export function DashboardPage() {
     <main className="pp-staff-main" id="main">
       <div className="pp-row-between" style={{ alignItems: 'flex-end' }}>
         <div className="pp-stack-2">
-          <h1 className="t-display">Orders</h1>
+          <h1 className="t-display">{t.title}</h1>
           <p className="t-meta">
-            {formatLongDay()} · Updated {now - updatedAt < 60_000 ? 'just now' : `${formatDuration(new Date(updatedAt).toISOString(), now)} ago`}
+            {fmt.longDay()} · {now - updatedAt < 60_000 ? t.updatedJustNow : t.updatedAgo(fmt.duration(new Date(updatedAt).toISOString(), now))}
           </p>
+          <p className="t-ink-2">{t.intro}</p>
         </div>
         <div className="pp-row" style={{ alignItems: 'flex-end' }}>
           <Field
-            label="Search"
+            label={t.search}
             type="search"
             icon={Search}
             className="pp-search"
-            placeholder="Order ID, name or email"
+            placeholder={t.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <ButtonLink to="/staff/new" icon={Plus}>Add walk-in order</ButtonLink>
+          <ButtonLink to="/staff/new" icon={Plus}>{m.staff.walkIn.title}</ButtonLink>
         </div>
       </div>
 
       <div className="pp-counts">
-        <CountCard strong label="To print" value={c?.toPrint} meta={c?.oldestWaitingAt ? `Oldest waiting ${formatDuration(c.oldestWaitingAt, now)}` : 'Nothing waiting'} />
-        <CountCard label="Printing" value={c?.printing} meta="On the counter printer" />
-        <CountCard label="Ready for pickup" value={c?.ready} meta="Customers emailed" />
-        <CountCard label="Claimed today" value={c?.claimedToday} meta={c ? `${plural(c.pagesClaimedToday, 'page')} printed` : '–'} />
+        <CountCard strong label={t.counts.toPrint} value={c?.toPrint} meta={c?.oldestWaitingAt ? t.counts.oldestWaiting(fmt.duration(c.oldestWaitingAt, now)) : t.counts.nothingWaiting} />
+        <CountCard label={t.counts.printing} value={c?.printing} meta={t.counts.printingMeta} />
+        <CountCard label={t.counts.ready} value={c?.ready} meta={t.counts.readyMeta} />
+        <CountCard label={t.counts.claimedToday} value={c?.claimedToday} meta={c ? t.counts.pagesPrinted(c.pagesClaimedToday) : '–'} />
       </div>
 
       {c && c.fileIssue > 0 && (
         <Alert tone="warning">
-          {c.fileIssue === 1 ? '1 order is' : `${c.fileIssue} orders are`} on hold with a file issue, waiting for the customer.
+          {t.fileIssueAlert(c.fileIssue)}
         </Alert>
       )}
 
       <div className={selected && wide ? 'pp-work has-panel' : 'pp-work'}>
         <div className="pp-stack pp-orders-wrap">
           <div className="pp-row-between">
-            <Segmented<OrderView> label="Show orders" value={view} onChange={(v) => update({ view: v === 'active' ? null : v })} options={VIEWS} />
-            <span className="t-meta">
-              {orders ? `${plural(orders.length, view === 'all' ? 'order' : `${view} order`)}${q ? ` matching “${q}”` : ''} · newest first` : 'Loading orders'}
+            <Segmented<OrderView>
+              label={t.showOrders}
+              size="md"
+              value={view}
+              onChange={(v) => update({ view: v === 'active' ? null : v })}
+              options={VIEWS.map((v) => ({ value: v, label: t.views[v] }))}
+            />
+            <span className="t-meta" aria-live="polite">
+              {orders ? t.countLine(orders.length, view, q) : t.loading}
             </span>
           </div>
 
           {list.error && !orders ? (
-            <Alert tone="error" title="Couldn't load orders" action={<Button size="sm" onClick={list.reload}>Try again</Button>}>
-              {list.error}
+            <Alert tone="error" title={t.loadError} action={<Button size="sm" onClick={list.reload}>{m.common.tryAgain}</Button>}>
+              {fmt.error(list.error)}
             </Alert>
           ) : !orders ? (
-            <ul className="pp-orders" aria-busy="true" aria-label="Loading orders">
+            <ul className="pp-orders" aria-busy="true" aria-label={t.loading}>
               {Array.from({ length: 6 }, (_, i) => (
                 <li key={i} className="pp-order-row" style={{ cursor: 'default' }}>
                   <span className="pp-cell-code"><Skeleton lines={2} /></span>
@@ -134,14 +139,14 @@ export function DashboardPage() {
             </ul>
           ) : orders.length === 0 ? (
             q ? (
-              <EmptyState icon={SearchX} title={`No orders match “${q}”`} action={<Button onClick={() => setSearch('')}>Clear search</Button>}>
-                Search by order ID (PRT-…), customer name or email. Try the All view for older orders.
+              <EmptyState icon={SearchX} title={t.empty.searchTitle(q)} action={<Button onClick={() => setSearch('')}>{t.empty.clearSearch}</Button>}>
+                {t.empty.searchBody}
               </EmptyState>
             ) : view === 'claimed' ? (
-              <EmptyState icon={Inbox} title="No claimed orders yet">Orders show up here once a customer picks them up.</EmptyState>
+              <EmptyState icon={Inbox} title={t.empty.claimedTitle}>{t.empty.claimedBody}</EmptyState>
             ) : (
-              <EmptyState icon={Inbox} title="No orders waiting" action={<ButtonLink to="/staff/new" variant="primary" icon={Plus}>Add walk-in order</ButtonLink>}>
-                New orders show up here as soon as customers send them.
+              <EmptyState icon={Inbox} title={t.empty.waitingTitle} action={<ButtonLink to="/staff/new" variant="primary" icon={Plus}>{m.staff.walkIn.title}</ButtonLink>}>
+                {t.empty.waitingBody}
               </EmptyState>
             )
           ) : (
@@ -157,7 +162,7 @@ export function DashboardPage() {
       </div>
 
       {!wide && (
-        <Drawer open={Boolean(selected)} onClose={close} title="Order details" width={480}>
+        <Drawer open={Boolean(selected)} onClose={close} title={t.orderDetails} width={480}>
           {selected && <OrderPanel key={selected} orderId={selected} />}
         </Drawer>
       )}
@@ -166,31 +171,44 @@ export function DashboardPage() {
 }
 
 function OrderList({ orders, selected, onSelect }: { orders: Order[]; selected: string | null; onSelect: (id: string) => void }) {
+  const { m, fmt } = useI18n();
+  const t = m.staff.dashboard.list;
   return (
-    <ul className="pp-orders" aria-label="Orders">
+    <ul className="pp-orders" aria-label={t.label}>
       <li className="pp-orders-head t-label" aria-hidden="true">
-        <span>Order</span>
-        <span>Customer</span>
-        <span>Files and settings</span>
-        <span>Status</span>
+        <span>{t.order}</span>
+        <span>{t.customer}</span>
+        <span>{t.filesSettings}</span>
+        <span>{t.status}</span>
       </li>
       {orders.map((o) => (
         <li key={o.id}>
           <button type="button" className="pp-order-row" aria-current={o.id === selected ? 'true' : undefined} onClick={() => onSelect(o.id)}>
             <span className="pp-cell-code">
               <span className="t-mono-id" style={{ display: 'block' }}>{o.code}</span>
-              <span className="t-meta">{formatWhen(o.createdAt)}{o.source === 'walk_in' ? ' · Walk-in' : ''}</span>
+              <span className="t-meta">{fmt.when(o.createdAt)}{o.source === 'walk_in' ? ` · ${t.walkIn}` : ''}</span>
             </span>
             <span className="pp-cell-name">
               <span className="t-body-strong t-truncate" style={{ display: 'block' }}>{o.customerName}</span>
-              <span className="t-meta t-truncate" style={{ display: 'block' }}>{o.email ?? o.phone ?? 'No contact details'}</span>
+              <span className="t-meta t-truncate" style={{ display: 'block' }}>{o.email ?? o.phone ?? t.noContact}</span>
+              {o.messengerConnectedAt && (
+                <span className="pp-staff-chip" title={t.messengerConnected}>
+                  <Icon icon={MessageCircle} />
+                  {t.messenger}
+                  <span className="mn-sr"> · {t.messengerConnected}</span>
+                </span>
+              )}
             </span>
             <span className="pp-cell-files">
-              <span style={{ display: 'block' }}>{filesSummary(o)}</span>
-              <span className="t-meta">{settingsSummary(o)}</span>
+              <span style={{ display: 'block' }}>{fmt.filesSummary(o)}</span>
+              <span className="t-meta">{fmt.settingsSummary(o)}</span>
             </span>
             <span className="pp-cell-tag">
               <StatusTag status={o.status} short />
+              <span className="pp-staff-open" aria-hidden="true">
+                {t.open}
+                <Icon icon={ChevronRight} />
+              </span>
             </span>
           </button>
         </li>

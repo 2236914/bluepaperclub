@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react';
-import { Minus, Plus, Send, ShieldCheck, X } from 'lucide-react';
-import { api, errorMessage, isMock, type ColorMode, type PaperSize, type Sides } from '../api';
+import { useRef, useState, type FormEvent } from 'react';
+import { Footprints, Minus, Plus, Send, ShieldCheck, X } from 'lucide-react';
+import { isMock, type ColorMode, type PaperSize, type Sides } from '../api';
 import {
   Alert,
   Button,
@@ -15,21 +15,12 @@ import {
   TextAreaField,
   UploadZone,
 } from '../design/components';
-import { ACCEPT_ATTR, MAX_FILES, countPages, fileKind, validateFile } from '../lib/files';
-import { COLOR_LABEL, PAPER_HINT, PAPER_LABEL, SIDES_LABEL, formatBytes, isEmail, plural, settingsSummary } from '../lib/format';
+import { useI18n, type Messages } from '../i18n';
+import { ACCEPT_ATTR, MAX_FILES, extensionOf, fileKind, type FileProblem } from '../lib/files';
 import { FileBadge } from './FileBadge';
+import { usePreferences } from './Preferences';
 import { PrivacyNotice } from './PrivacyNotice';
-
-interface PickedFile {
-  key: string;
-  file: File;
-  /** undefined while counting */
-  pages: number | null | undefined;
-  error: string | null;
-  progress: number | null;
-}
-
-type FieldName = 'files' | 'name' | 'email' | 'phone' | 'copies' | 'consent';
+import { FIELD_ORDER, cleanCopies, stepCopies, useOrderDraft, type DraftField, type DraftErrors, type PickedFile } from './useOrderDraft';
 
 /** What the form hands back after a successful submit. */
 export interface SubmittedOrder {
@@ -46,369 +37,324 @@ export interface OrderFormProps {
   onSubmitted: (result: SubmittedOrder) => void;
 }
 
-let keySeq = 0;
+/** A file problem in words: what is wrong, and what to do. */
+export function fileProblemWords(t: Messages['form'], problem: FileProblem, name: string): { what: string; fix: string } {
+  const p = t.problems[problem];
+  return { what: typeof p.what === 'function' ? p.what(extensionOf(name)) : p.what, fix: p.fix };
+}
 
 /** Upload + print settings + details. The customer site and the walk-in screen share it. */
 export function OrderForm({ mode, onSubmitted }: OrderFormProps) {
-  const walkIn = mode === 'walk_in';
-  const [files, setFiles] = useState<PickedFile[]>([]);
-  const [skipped, setSkipped] = useState(0);
-  const [paper, setPaper] = useState<PaperSize>('short');
-  const [color, setColor] = useState<ColorMode>('bw');
-  const [sides, setSides] = useState<Sides>('one');
-  const [copies, setCopies] = useState('1');
-  const [notes, setNotes] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [consent, setConsent] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { m, fmt } = useI18n();
+  const t = m.form;
+  const c = m.common;
+  const { setPref } = usePreferences();
+  const o = useOrderDraft(mode);
+  const { walkIn, draft: d, set, errors, submitting, goodFiles, pageTotal, sizeTotal, overall, copiesNum } = o;
   const [privacyOpen, setPrivacyOpen] = useState(false);
-  const refs = {
-    files: useRef<HTMLDivElement>(null),
-    name: useRef<HTMLInputElement>(null),
-    email: useRef<HTMLInputElement>(null),
-    phone: useRef<HTMLInputElement>(null),
-    copies: useRef<HTMLInputElement>(null),
-    consent: useRef<HTMLInputElement>(null),
-  };
+  const [announce, setAnnounce] = useState('');
+  const filesRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const copiesRef = useRef<HTMLInputElement>(null);
+  const consentRef = useRef<HTMLInputElement>(null);
+  const elFor = (k: DraftField): HTMLElement | null =>
+    ({ files: filesRef, name: nameRef, email: emailRef, phone: phoneRef, copies: copiesRef, consent: consentRef })[k].current;
 
-  const goodFiles = files.filter((f) => !f.error);
-  const pageTotal = useMemo(() => {
-    let sum = 0;
-    for (const f of goodFiles) {
-      if (f.pages == null) return null;
-      sum += f.pages;
-    }
-    return sum;
-  }, [goodFiles]);
-  const sizeTotal = goodFiles.reduce((s, f) => s + f.file.size, 0);
-  const copiesNum = Number.parseInt(copies, 10);
-  const overall = goodFiles.length ? goodFiles.reduce((sum, f) => sum + (f.progress ?? 0), 0) / goodFiles.length : 0;
+  const err = (k: DraftField, e: DraftErrors = errors) => (e[k] ? t.errors[e[k]!] : undefined);
 
-  const addFiles = (incoming: File[]) => {
-    const room = MAX_FILES - files.length;
-    const accepted = incoming.slice(0, Math.max(0, room));
-    setSkipped(incoming.length - accepted.length);
-    const picked: PickedFile[] = accepted.map((file) => ({
-      key: `f${++keySeq}`,
-      file,
-      pages: undefined,
-      error: validateFile(file),
-      progress: null,
-    }));
-    setFiles((prev) => [...prev, ...picked]);
-    setErrors((e) => ({ ...e, files: undefined }));
-    picked.forEach((p) => {
-      if (p.error) return;
-      countPages(p.file).then((pages) => {
-        setFiles((prev) => prev.map((f) => (f.key === p.key ? { ...f, pages } : f)));
-      });
-    });
-  };
-
-  const removeFile = (key: string) => {
-    setFiles((prev) => prev.filter((f) => f.key !== key));
-    setSkipped(0);
-  };
-
-  const validate = (): Partial<Record<FieldName, string>> => {
-    const e: Partial<Record<FieldName, string>> = {};
-    if (goodFiles.length === 0) e.files = 'Add at least one file to print.';
-    else if (files.some((f) => f.error)) e.files = "Remove the files we can't print first.";
-    if (!name.trim()) e.name = walkIn ? 'Enter the customer name.' : 'Enter your name.';
-    if (!walkIn && !email.trim()) e.email = 'Enter your email so we can send your order ID.';
-    else if (email.trim() && !isEmail(email)) e.email = 'Enter a valid email address, like juan@gmail.com.';
-    if (phone.trim() && phone.replace(/\D/g, '').length < 7) e.phone = 'Enter a full mobile number, or leave it blank.';
-    if (!Number.isInteger(copiesNum) || copiesNum < 1 || copiesNum > 999) e.copies = 'Enter 1 to 999 copies.';
-    if (!walkIn && !consent) e.consent = 'Tick the box to agree to the privacy notice.';
-    return e;
+  const focusFirst = (e: DraftErrors) => {
+    const first = FIELD_ORDER.find((k) => e[k]);
+    if (!first) return;
+    const el = elFor(first);
+    el?.focus();
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   };
 
   const onSubmit = async (ev: FormEvent) => {
     ev.preventDefault();
-    setSubmitError(null);
-    const e = validate();
-    setErrors(e);
-    const first = (['files', 'name', 'email', 'phone', 'copies', 'consent'] as FieldName[]).find((k) => e[k]);
-    if (first) {
-      const el = refs[first].current;
-      el?.focus();
-      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      return;
-    }
-    setSubmitting(true);
-    setFiles((prev) => prev.map((f) => ({ ...f, progress: 0 })));
-    const toSend = files.filter((f) => !f.error);
-    try {
-      const { code } = await api.submitOrder(
-        {
-          customerName: name,
-          email: email.trim() || null,
-          phone: phone.trim() || null,
-          paper,
-          color,
-          sides,
-          copies: copiesNum,
-          notes: notes.trim() || null,
-          files: toSend.map((f) => f.file),
-          source: walkIn ? 'walk_in' : 'online',
-          turnstileToken: walkIn ? null : 'mock-token',
-        },
-        (index, pct) => {
-          const key = toSend[index]?.key;
-          setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, progress: pct } : f)));
-        },
-      );
-      onSubmitted({ code, email: email.trim() || null, name: name.trim(), phone: phone.trim() || null, remembered: false });
-    } catch (err) {
-      setSubmitError(errorMessage(err));
-      setFiles((prev) => prev.map((f) => ({ ...f, progress: null })));
-      setSubmitting(false);
-    }
+    const found = await o.submit(onSubmitted);
+    if (found) focusFirst(found);
+  };
+
+  const removeFile = (f: PickedFile) => {
+    o.removeFile(f.key);
+    setAnnounce(t.files.removed(f.file.name));
+    filesRef.current?.focus();
+  };
+
+  const forget = () => {
+    o.forget();
+    setAnnounce(t.details.forgotten);
+    nameRef.current?.focus();
   };
 
   const fileMeta = (f: PickedFile) => {
-    if (f.error) return `Error: ${f.error}`;
-    const size = formatBytes(f.file.size);
-    if (fileKind(f.file.name) === 'word') return `${size} · Pages counted after we convert it to PDF`;
-    if (f.pages === undefined) return `${size} · Counting pages…`;
-    if (f.pages === null) return `${size} · We'll count the pages`;
-    return `${plural(f.pages, 'page')} · ${size}`;
+    if (f.problem) {
+      const w = fileProblemWords(t, f.problem, f.file.name);
+      return fmt.error(`${w.what} ${w.fix}`);
+    }
+    const size = fmt.bytes(f.file.size);
+    if (fileKind(f.file.name) === 'word') return `${size} · ${t.files.wordPages}`;
+    if (f.pages === undefined) return `${size} · ${t.files.counting}`;
+    if (f.pages === null) return `${size} · ${t.files.countLater}`;
+    return `${c.pages(f.pages)} · ${size}`;
   };
 
   const filesMeta = goodFiles.length
-    ? [plural(goodFiles.length, 'file'), pageTotal != null ? plural(pageTotal, 'page') : null, formatBytes(sizeTotal)].filter(Boolean).join(' · ')
-    : `Up to ${MAX_FILES} files, 20 MB each`;
+    ? [c.files(goodFiles.length), pageTotal != null ? c.pages(pageTotal) : null, fmt.bytes(sizeTotal)].filter(Boolean).join(' · ')
+    : t.files.limits(MAX_FILES);
+
+  const copiesSafe = Number.isInteger(copiesNum) && copiesNum > 0 ? copiesNum : 1;
 
   return (
-    <form className="pp-two-col" onSubmit={onSubmit} noValidate aria-busy={submitting}>
-      <Card title={walkIn ? '1. Files' : '1. Your files'} meta={filesMeta} className="pp-stack" data-tour="files">
-        <div ref={refs.files} tabIndex={-1} className="pp-stack" style={{ outline: 'none' }}>
-          <UploadZone
-            onFiles={addFiles}
-            accept={ACCEPT_ATTR}
-            compact={files.length > 0}
-            disabled={submitting || files.length >= MAX_FILES}
-            title={files.length >= MAX_FILES ? 'You have added 10 files' : files.length ? 'Add more files' : 'Drag your files here, or choose them'}
-            hint="PDF, Word, JPG or PNG · up to 20 MB each"
-            describedBy={errors.files ? 'files-error' : undefined}
-          />
-          {skipped > 0 && (
-            <Alert tone="warning" onClose={() => setSkipped(0)}>
-              You can send up to {MAX_FILES} files per order. We left out {plural(skipped, 'file')}. Send them in a second order.
-            </Alert>
-          )}
-          {errors.files && (
-            <p className="t-small" id="files-error" style={{ color: 'var(--ink)' }}>
-              Error: {errors.files}
-            </p>
-          )}
-          {files.length > 0 && (
-            <ul className="pp-file-list" aria-label="Files to print">
-              {files.map((f) => (
-                <li key={f.key} className={f.error ? 'pp-file-row is-error' : 'pp-file-row'}>
-                  <FileBadge name={f.file.name} />
-                  <div className="pp-file-info">
-                    <span className="pp-file-name" title={f.file.name}>{f.file.name}</span>
-                    <span className="t-meta" style={f.error ? { color: 'var(--ink)' } : undefined}>{fileMeta(f)}</span>
-                    {f.progress != null && <Progress value={f.progress} label={`Uploading ${f.file.name}`} />}
-                  </div>
-                  <IconButton icon={X} label={`Remove ${f.file.name}`} disabled={submitting} onClick={() => removeFile(f.key)} />
-                </li>
-              ))}
-            </ul>
-          )}
+    <div className="pp-stack fm-form">
+      {!walkIn && (
+        <div className="fm-switch">
+          <Button variant="secondary" icon={Footprints} onClick={() => setPref('guided', true)} disabled={submitting}>
+            {t.switchToGuided}
+          </Button>
+          <span className="t-small">{t.switchToGuidedHint}</span>
         </div>
-        <p className="t-small">
-          {walkIn
-            ? 'Files are deleted 7 days after the order is claimed.'
-            : 'Your files stay private. We delete them 7 days after you claim your order.'}
-        </p>
-      </Card>
+      )}
+      <p className="mn-sr" aria-live="polite">{announce}</p>
 
-      <div className="pp-stack-6">
-        <Card data-tour="settings" title="2. Print settings" meta={`Applies to all ${goodFiles.length > 1 ? plural(goodFiles.length, 'file') : 'files'}`} className="pp-stack">
-          <div className="mn-field">
-            <span className="mn-field-label" id={`${mode}-paper`}>Paper size</span>
-            <Segmented<PaperSize>
-              labelledBy={`${mode}-paper`}
-              value={paper}
-              onChange={setPaper}
-              options={(['short', 'a4', 'long'] as PaperSize[]).map((p) => ({ value: p, label: PAPER_LABEL[p] }))}
+      <form className="pp-two-col" onSubmit={onSubmit} noValidate aria-busy={submitting}>
+        <Card title={t.files.title[mode]} meta={filesMeta} className="pp-stack" data-tour="files">
+          <div ref={filesRef} tabIndex={-1} className="pp-stack fm-focus-target">
+            <UploadZone
+              onFiles={o.addFiles}
+              accept={ACCEPT_ATTR}
+              compact={d.files.length > 0}
+              disabled={submitting || d.files.length >= MAX_FILES}
+              title={d.files.length >= MAX_FILES ? t.files.zoneFull(MAX_FILES) : d.files.length ? t.files.zoneMore : t.files.zoneEmpty}
+              hint={t.files.zoneHint}
+              describedBy={errors.files ? `${mode}-files-error` : undefined}
             />
-            <span className="mn-field-hint">
-              {PAPER_LABEL[paper]} is {PAPER_HINT[paper]}
-            </span>
-          </div>
-          <div className="mn-field">
-            <span className="mn-field-label" id={`${mode}-color`}>Color</span>
-            <Segmented<ColorMode>
-              labelledBy={`${mode}-color`}
-              value={color}
-              onChange={setColor}
-              options={(['bw', 'color'] as ColorMode[]).map((c) => ({ value: c, label: COLOR_LABEL[c] }))}
-            />
-          </div>
-          <div className="pp-row" style={{ alignItems: 'flex-start', gap: 24 }}>
-            <div className="mn-field">
-              <span className="mn-field-label" id={`${mode}-sides`}>Sides</span>
-              <Segmented<Sides>
-                labelledBy={`${mode}-sides`}
-                value={sides}
-                onChange={setSides}
-                options={(['one', 'two'] as Sides[]).map((s) => ({ value: s, label: SIDES_LABEL[s] }))}
-              />
-            </div>
-            <div className={errors.copies ? 'mn-field mn-field-error' : 'mn-field'}>
-              <label className="mn-field-label" htmlFor={`${mode}-copies`}>Copies</label>
-              <div className="pp-stepper">
-                <IconButton
-                  icon={Minus}
-                  label="Fewer copies"
-                  variant="quiet"
-                  disabled={!(copiesNum > 1)}
-                  onClick={() => setCopies(String(Math.max(1, (copiesNum || 1) - 1)))}
-                />
-                <input
-                  ref={refs.copies}
-                  id={`${mode}-copies`}
-                  inputMode="numeric"
-                  value={copies}
-                  aria-invalid={errors.copies ? true : undefined}
-                  aria-describedby={errors.copies ? `${mode}-copies-hint` : undefined}
-                  onChange={(e) => setCopies(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                />
-                <IconButton
-                  icon={Plus}
-                  label="More copies"
-                  variant="quiet"
-                  disabled={copiesNum >= 999}
-                  onClick={() => setCopies(String(Math.min(999, (copiesNum || 0) + 1)))}
-                />
-              </div>
-              {errors.copies && <span className="mn-field-hint" id={`${mode}-copies-hint`}>Error: {errors.copies}</span>}
-            </div>
-          </div>
-          <TextAreaField
-            label="Notes"
-            placeholder="Anything we should know"
-            hint="For example: staple each chapter, or print page 3 in color only."
-            value={notes}
-            maxLength={1000}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </Card>
-
-        <Card title={walkIn ? '3. Customer' : '3. Your details'} className="pp-stack" data-tour="details">
-          <Field
-            ref={refs.name}
-            label="Full name"
-            autoComplete={walkIn ? 'off' : 'name'}
-            value={name}
-            error={errors.name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Field
-            ref={refs.email}
-            label="Email"
-            type="email"
-            inputMode="email"
-            autoComplete={walkIn ? 'off' : 'email'}
-            value={email}
-            error={errors.email}
-            hint={walkIn ? "Optional. We'll email the order ID and when it's ready." : "We'll send your order ID here."}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Field
-            ref={refs.phone}
-            label="Mobile number"
-            type="tel"
-            inputMode="tel"
-            autoComplete={walkIn ? 'off' : 'tel'}
-            placeholder="0917 123 4567"
-            value={phone}
-            error={errors.phone}
-            hint={walkIn ? 'Optional. For orders without an email.' : "Optional. We'll call only if there's a problem with your files."}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-
-          {!walkIn && (
-            <div className={errors.consent ? 'mn-field mn-field-error' : 'mn-field'}>
-              <Checkbox
-                ref={refs.consent}
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-                aria-describedby={errors.consent ? 'consent-hint' : undefined}
-                label={
-                  <>
-                    I agree to the{' '}
-                    <button type="button" className="pp-linkbtn" onClick={() => setPrivacyOpen(true)}>
-                      privacy notice
-                    </button>
-                    . You use my files only to print this order.
-                  </>
-                }
-              />
-              {errors.consent && <span className="mn-field-hint" id="consent-hint">Error: {errors.consent}</span>}
-            </div>
-          )}
-
-          {!walkIn && (
-            <div className="pp-turnstile" aria-label="Spam check">
-              <Icon icon={ShieldCheck} />
-              <span>{isMock ? 'Spam check (Cloudflare Turnstile) goes here' : 'Checking you are human…'}</span>
-            </div>
-          )}
-
-          {submitError && (
-            <Alert tone="error" title="We couldn't send your order">
-              {submitError}
-            </Alert>
-          )}
-
-          <div className="pp-stack-2" data-tour="submit">
-            {goodFiles.length > 0 && (
-              <p className="t-meta">
-                {[filesMeta, settingsSummary({ paper, color, sides, copies: Number.isInteger(copiesNum) && copiesNum > 0 ? copiesNum : 1 })].join(' · ')}
+            {d.skipped > 0 && (
+              <Alert tone="warning" onClose={() => set({ skipped: 0 })}>
+                {t.files.skipped(MAX_FILES, c.files(d.skipped))}
+              </Alert>
+            )}
+            {errors.files && (
+              <p className="t-small fm-error-text" id={`${mode}-files-error`}>
+                {fmt.error(err('files')!)}
               </p>
             )}
-            <Button type="submit" variant="primary" size="lg" fullWidth icon={Send} loading={submitting}>
-              {submitting ? 'Sending files' : walkIn ? 'Add order' : 'Submit order'}
-            </Button>
-            {submitting && (
-              <Progress
-                showLabel
-                label={overall >= 100 ? 'Creating your order' : `Uploading ${plural(goodFiles.length, 'file')}`}
-                value={overall}
-              />
+            {d.files.length > 0 && (
+              <ul className="pp-file-list" aria-label={t.files.listLabel}>
+                {d.files.map((f) => (
+                  <li key={f.key} className={f.problem ? 'pp-file-row is-error' : 'pp-file-row'}>
+                    <FileBadge name={f.file.name} />
+                    <div className="pp-file-info">
+                      <span className="pp-file-name" title={f.file.name}>{f.file.name}</span>
+                      <span className={f.problem ? 't-meta fm-error-text' : 't-meta'}>{fileMeta(f)}</span>
+                      {f.progress != null && <Progress value={f.progress} label={t.files.uploading(f.file.name)} />}
+                    </div>
+                    <IconButton icon={X} label={t.files.removeFile(f.file.name)} disabled={submitting} onClick={() => removeFile(f)} />
+                  </li>
+                ))}
+              </ul>
             )}
-            <p className="t-small">
-              {walkIn ? 'The order shows up on the dashboard as Received.' : 'Pickup only. You pay at the counter when you claim your order.'}
-            </p>
           </div>
+          <p className="t-small">{t.files.privacy[mode]}</p>
         </Card>
-      </div>
-      <Dialog
-        open={privacyOpen}
-        onClose={() => setPrivacyOpen(false)}
-        title="Privacy notice"
-        footer={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setConsent(true);
-              setPrivacyOpen(false);
-            }}
+
+        <div className="pp-stack-6">
+          <Card
+            data-tour="settings"
+            title={t.settings.title}
+            meta={goodFiles.length > 1 ? t.settings.appliesN(goodFiles.length) : t.settings.appliesAll}
+            className="pp-stack"
           >
-            I agree
-          </Button>
-        }
-      >
-        <PrivacyNotice />
-      </Dialog>
-    </form>
+            <div className="mn-field">
+              <span className="mn-field-label" id={`${mode}-paper`}>{t.settings.paper}</span>
+              <Segmented<PaperSize>
+                labelledBy={`${mode}-paper`}
+                value={d.paper}
+                onChange={(paper) => set({ paper })}
+                options={(['short', 'a4', 'long'] as PaperSize[]).map((p) => ({ value: p, label: c.paper[p] }))}
+              />
+              <span className="mn-field-hint">{t.settings.paperHint(c.paper[d.paper], c.paperDims[d.paper])}</span>
+            </div>
+            <div className="mn-field">
+              <span className="mn-field-label" id={`${mode}-color`}>{t.settings.color}</span>
+              <Segmented<ColorMode>
+                labelledBy={`${mode}-color`}
+                value={d.color}
+                onChange={(color) => set({ color })}
+                wrap
+                options={(['bw', 'color'] as ColorMode[]).map((v) => ({ value: v, label: c.color[v] }))}
+              />
+            </div>
+            <div className="pp-row fm-settings-row">
+              <div className="mn-field">
+                <span className="mn-field-label" id={`${mode}-sides`}>{t.settings.sides}</span>
+                <Segmented<Sides>
+                  labelledBy={`${mode}-sides`}
+                  value={d.sides}
+                  onChange={(sides) => set({ sides })}
+                  wrap
+                  options={(['one', 'two'] as Sides[]).map((s) => ({ value: s, label: c.sides[s] }))}
+                />
+              </div>
+              <div className={errors.copies ? 'mn-field mn-field-error' : 'mn-field'}>
+                <label className="mn-field-label" htmlFor={`${mode}-copies`}>{t.settings.copies}</label>
+                <div className="pp-stepper">
+                  <IconButton
+                    icon={Minus}
+                    label={t.settings.fewer}
+                    variant="quiet"
+                    disabled={!(copiesNum > 1)}
+                    onClick={() => set({ copies: stepCopies(d.copies, -1) })}
+                  />
+                  <input
+                    ref={copiesRef}
+                    id={`${mode}-copies`}
+                    inputMode="numeric"
+                    value={d.copies}
+                    aria-invalid={errors.copies ? true : undefined}
+                    aria-describedby={errors.copies ? `${mode}-copies-hint` : undefined}
+                    onChange={(e) => set({ copies: cleanCopies(e.target.value) })}
+                  />
+                  <IconButton
+                    icon={Plus}
+                    label={t.settings.more}
+                    variant="quiet"
+                    disabled={copiesNum >= 999}
+                    onClick={() => set({ copies: stepCopies(d.copies, 1) })}
+                  />
+                </div>
+                {errors.copies && <span className="mn-field-hint" id={`${mode}-copies-hint`}>{fmt.error(err('copies')!)}</span>}
+              </div>
+            </div>
+            <TextAreaField
+              label={t.settings.notes}
+              placeholder={t.settings.notesPlaceholder}
+              hint={t.settings.notesHint}
+              value={d.notes}
+              maxLength={1000}
+              onChange={(e) => set({ notes: e.target.value })}
+            />
+          </Card>
+
+          <Card title={t.details.title[mode]} className="pp-stack" data-tour="details">
+            {!walkIn && d.welcomeName && (
+              <div className="fm-welcome">
+                <p>{t.details.welcomeBack(d.welcomeName)}</p>
+                <Button size="sm" onClick={forget} disabled={submitting}>{t.details.forget}</Button>
+                <span className="t-small">{t.details.forgetHint}</span>
+              </div>
+            )}
+            <Field
+              ref={nameRef}
+              label={t.details.name}
+              autoComplete={walkIn ? 'off' : 'name'}
+              value={d.name}
+              error={err('name')}
+              onChange={(e) => set({ name: e.target.value })}
+            />
+            <Field
+              ref={emailRef}
+              label={t.details.email}
+              type="email"
+              inputMode="email"
+              autoComplete={walkIn ? 'off' : 'email'}
+              value={d.email}
+              error={err('email')}
+              hint={t.details.emailHint[mode]}
+              onChange={(e) => set({ email: e.target.value })}
+            />
+            {!walkIn && <p className="t-small fm-messenger-line">{t.details.messenger}</p>}
+            <Field
+              ref={phoneRef}
+              label={t.details.phone}
+              type="tel"
+              inputMode="tel"
+              autoComplete={walkIn ? 'off' : 'tel'}
+              placeholder={t.details.phonePlaceholder}
+              value={d.phone}
+              error={err('phone')}
+              hint={t.details.phoneHint[mode]}
+              onChange={(e) => set({ phone: e.target.value })}
+            />
+
+            {!walkIn && (
+              <div className={errors.consent ? 'mn-field mn-field-error' : 'mn-field'}>
+                <Checkbox
+                  ref={consentRef}
+                  checked={d.consent}
+                  onChange={(e) => set({ consent: e.target.checked })}
+                  aria-describedby={errors.consent ? `${mode}-consent-hint` : undefined}
+                  label={
+                    <>
+                      {t.details.consentBefore}
+                      <button type="button" className="pp-linkbtn" onClick={() => setPrivacyOpen(true)}>
+                        {t.details.consentLink}
+                      </button>
+                      {t.details.consentAfter}
+                    </>
+                  }
+                />
+                {errors.consent && (
+                  <span className="mn-field-hint" id={`${mode}-consent-hint`}>{fmt.error(err('consent')!)}</span>
+                )}
+              </div>
+            )}
+
+            {!walkIn && (
+              <div className="pp-turnstile" role="group" aria-label={t.details.spamLabel}>
+                <Icon icon={ShieldCheck} />
+                <span>{isMock ? t.details.spamMock : t.details.spamLive}</span>
+              </div>
+            )}
+
+            {o.submitError && (
+              <Alert tone="error" title={t.submit.failedTitle[mode]}>
+                {o.submitError}
+              </Alert>
+            )}
+
+            <div className="pp-stack-2" data-tour="submit">
+              {goodFiles.length > 0 && (
+                <p className="t-meta">
+                  {[filesMeta, fmt.settingsSummary({ paper: d.paper, color: d.color, sides: d.sides, copies: copiesSafe })].join(' · ')}
+                </p>
+              )}
+              <Button type="submit" variant="primary" size="lg" fullWidth icon={Send} loading={submitting}>
+                {submitting ? t.submit.sending : t.submit.button[mode]}
+              </Button>
+              {submitting && (
+                <Progress
+                  showLabel
+                  label={overall >= 100 ? t.submit.creating : t.submit.uploadingN(c.files(goodFiles.length))}
+                  value={overall}
+                />
+              )}
+              <p className="t-small">{t.submit.footnote[mode]}</p>
+            </div>
+          </Card>
+        </div>
+        <Dialog
+          open={privacyOpen}
+          onClose={() => setPrivacyOpen(false)}
+          title={t.privacyTitle}
+          footer={
+            <Button
+              variant="primary"
+              onClick={() => {
+                set({ consent: true });
+                setPrivacyOpen(false);
+              }}
+            >
+              {t.agree}
+            </Button>
+          }
+        >
+          <PrivacyNotice />
+        </Dialog>
+      </form>
+    </div>
   );
 }

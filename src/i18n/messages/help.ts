@@ -1,4 +1,166 @@
 /* Messages for the help area. Same rules as common.ts: `fil` must match `en` key for key. */
-export const en = {};
+export const en = {
+  bar: {
+    region: 'Make this site easier to use',
+    language: 'Language',
+    textSize: 'Text size',
+    sizes: { normal: 'Normal text size', large: 'Large text', xlarge: 'Largest text' },
+    moreSettings: 'More settings',
+    howToUse: 'How to use',
+  },
+  prefs: {
+    title: 'Display and help settings',
+    intro: 'Changes apply straight away and are saved on this device.',
+    textSizeHint: 'Makes all the words and buttons bigger.',
+    languageHint: 'The language of the whole site.',
+    highContrast: 'High contrast',
+    highContrastHint: 'Darker words and clearer lines.',
+    reduceMotion: 'Less motion',
+    reduceMotionHint: 'Turns off sliding and smooth scrolling.',
+    guided: 'Step by step',
+    guidedHint: 'One question per screen with big buttons, instead of the full form.',
+    readAloud: 'Read aloud buttons',
+    readAloudHint: 'Shows a button that reads the instructions out loud.',
+    readAloudUnsupported: 'This browser cannot read aloud.',
+    reset: 'Reset to default',
+    resetHint: 'Normal text, normal colors and the full form.',
+    resetDone: 'Settings are back to default.',
+  },
+  welcome: {
+    title: (shop: string) => `Welcome to ${shop}`,
+    intro: 'Send your files from here and pick up your prints at the shop. First, a few choices to make this site easier for you.',
+    languageTitle: 'Choose your language',
+    sizeTitle: 'Choose your text size',
+    sizeNames: { normal: 'Normal', large: 'Large', xlarge: 'Largest' },
+    sample: 'This is how big the words will be.',
+    firstTimeTitle: 'First time sending files online?',
+    guideMe: 'Guide me, one step at a time',
+    guideMeHint: 'One question per screen, with big buttons.',
+    showMe: 'Show me around the page',
+    showMeHint: 'We point out each part of the page.',
+    knowIt: 'I know how',
+    updates: 'After you send your files, you can get updates by email or on Messenger.',
+    readText: (shop: string) =>
+      `Welcome to ${shop}. Send your files from here and pick up your prints at the shop. Choose your language and text size. If this is your first time, choose "Guide me, one step at a time" or "Show me around the page". After you send your files, you can get updates by email or on Messenger.`,
+  },
+  tour: {
+    label: 'How to use this page',
+    stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
+    finish: 'Done',
+    skip: 'Skip the guide',
+    announce: (n: number, total: number, title: string) => `Step ${n} of ${total}: ${title}`,
+    steps: {
+      easybar: {
+        title: 'Make the site easier',
+        body: 'Here you can make the words bigger and change the language. Tap "How to use" any time to see this guide again.',
+      },
+      files: {
+        title: 'Choose your files',
+        body: 'Tap here to pick the files from your phone or computer. PDF, Word, JPG and PNG are fine.',
+      },
+      settings: {
+        title: 'Choose how to print',
+        body: 'Pick the paper size, black and white or colored, one side or both sides, and how many copies.',
+      },
+      details: {
+        title: 'Your name and contact',
+        body: 'Type your name and your email or mobile number. We send your order ID there.',
+      },
+      submit: {
+        title: 'Send your order',
+        body: 'Tap this button to send your files. You get an order ID. After sending, you can also get updates on Messenger.',
+      },
+      track: {
+        title: 'Check your order',
+        body: 'Tap here later to see if your prints are ready. Have your order ID and email ready.',
+      },
+      guided: {
+        title: 'One step at a time',
+        body: 'Answer one question per screen. Tap a big button to answer, then "Next" to go on. After sending, you can also get updates on Messenger.',
+      },
+    },
+  },
+};
 
-export const fil: typeof en = {};
+export const fil: typeof en = {
+  bar: {
+    region: 'Para mas madaling gamitin ang site',
+    language: 'Wika',
+    textSize: 'Laki ng letra',
+    sizes: { normal: 'Normal na laki ng letra', large: 'Malaking letra', xlarge: 'Pinakamalaking letra' },
+    moreSettings: 'Iba pang setting',
+    howToUse: 'Paano gamitin',
+  },
+  prefs: {
+    title: 'Mga setting ng display at tulong',
+    intro: 'Agad itong gagana at maiiwan sa device na ito.',
+    textSizeHint: 'Pinalalaki ang lahat ng letra at button.',
+    languageHint: 'Ang wika ng buong site.',
+    highContrast: 'Mas malinaw na kulay',
+    highContrastHint: 'Mas maitim na letra at mas malinaw na guhit.',
+    reduceMotion: 'Bawasan ang galaw',
+    reduceMotionHint: 'Walang pag-slide at mabagal na pag-scroll.',
+    guided: 'Isa-isang hakbang',
+    guidedHint: 'Isang tanong bawat screen, may malalaking button, sa halip na buong form.',
+    readAloud: 'Mga button na Basahin nang malakas',
+    readAloudHint: 'May button na magbabasa nang malakas ng mga paliwanag.',
+    readAloudUnsupported: 'Hindi kayang magbasa nang malakas ng browser na ito.',
+    reset: 'Ibalik sa dati',
+    resetHint: 'Normal na letra, normal na kulay at buong form.',
+    resetDone: 'Naibalik na sa dati ang mga setting.',
+  },
+  welcome: {
+    title: (shop: string) => `Maligayang pagdating po sa ${shop}`,
+    intro: 'Dito ninyo ipapadala ang mga file, at sa shop ninyo kukunin ang mga na-print. Pumili muna tayo para mas madali sa inyo ang site.',
+    languageTitle: 'Piliin ang wika',
+    sizeTitle: 'Piliin ang laki ng letra',
+    sizeNames: { normal: 'Normal', large: 'Malaki', xlarge: 'Pinakamalaki' },
+    sample: 'Ganito kalaki ang mga letra.',
+    firstTimeTitle: 'Unang beses ba ninyong magpadala ng file online?',
+    guideMe: 'Gabayan ako, isa-isang hakbang',
+    guideMeHint: 'Isang tanong bawat screen, may malalaking button.',
+    showMe: 'Ipakita sa akin ang page',
+    showMeHint: 'Ituturo namin ang bawat bahagi ng page.',
+    knowIt: 'Alam ko na',
+    updates: 'Kapag naipadala na ninyo ang mga file, makakatanggap kayo ng update sa email o sa Messenger.',
+    readText: (shop: string) =>
+      `Maligayang pagdating po sa ${shop}. Dito ninyo ipapadala ang mga file, at sa shop ninyo kukunin ang mga na-print. Piliin ang wika at ang laki ng letra. Kung unang beses ninyo ito, piliin ang "Gabayan ako, isa-isang hakbang" o "Ipakita sa akin ang page". Kapag naipadala na ninyo ang mga file, makakatanggap kayo ng update sa email o sa Messenger.`,
+  },
+  tour: {
+    label: 'Paano gamitin ang page na ito',
+    stepOf: (n: number, total: number) => `Hakbang ${n} ng ${total}`,
+    finish: 'Tapos na',
+    skip: 'Laktawan ang gabay',
+    announce: (n: number, total: number, title: string) => `Hakbang ${n} ng ${total}: ${title}`,
+    steps: {
+      easybar: {
+        title: 'Gawing mas madali ang site',
+        body: 'Dito ninyo mapapalaki ang letra at mapapalitan ang wika. Pindutin ang "Paano gamitin" kung gusto ninyong makita ulit ang gabay na ito.',
+      },
+      files: {
+        title: 'Piliin ang mga file',
+        body: 'Pindutin ito para piliin ang mga file sa inyong phone o computer. Puwede ang PDF, Word, JPG at PNG.',
+      },
+      settings: {
+        title: 'Piliin kung paano ipi-print',
+        body: 'Piliin ang laki ng papel, kung itim at puti o may kulay, kung harap lang o harap at likod, at ilang kopya.',
+      },
+      details: {
+        title: 'Ang inyong pangalan at contact',
+        body: 'Ilagay ang inyong buong pangalan at ang email o numero ng cellphone. Doon namin ipapadala ang order ID.',
+      },
+      submit: {
+        title: 'Ipadala ang order',
+        body: 'Pindutin ang button na ito para ipadala ang mga file. Bibigyan kayo ng order ID. Pagkatapos, puwede rin kayong kumuha ng update sa Messenger.',
+      },
+      track: {
+        title: 'Tingnan ang status',
+        body: 'Pindutin ito mamaya para malaman kung handa nang kunin ang mga na-print. Ihanda ang order ID at email.',
+      },
+      guided: {
+        title: 'Isa-isang hakbang',
+        body: 'Isang tanong lang bawat screen. Pindutin ang malaking button para sumagot, at "Susunod" para magpatuloy. Pagkatapos ipadala, puwede rin kayong kumuha ng update sa Messenger.',
+      },
+    },
+  },
+};

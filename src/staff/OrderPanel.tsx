@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Check,
-  Download,
-  Eye,
   Mail,
+  MessageCircle,
   PackageCheck,
+  Pencil,
   Phone,
   Printer,
-  Smartphone,
   StickyNote,
   TriangleAlert,
   Undo2,
@@ -21,7 +20,6 @@ import {
   Checkbox,
   Dialog,
   Icon,
-  IconButton,
   Segmented,
   Skeleton,
   STATUS_ICON,
@@ -32,13 +30,16 @@ import {
   type IconType,
   type TimelineItem,
 } from '../design/components';
+import { useI18n } from '../i18n';
 import { fileKind } from '../lib/files';
-import { STATUS_LABEL, filesSummary, firstName, formatDuration, formatWhen, plural } from '../lib/format';
+import { firstName } from '../lib/format';
 import { printerFor } from '../lib/printers';
 import { canPrintOnThisPhone, downloadUrl, shareForPrinting } from '../lib/share';
-import { FileBadge } from '../shared/FileBadge';
-import { fileLine, SettingsList } from '../shared/OrderBits';
+import { SettingsList } from '../shared/OrderBits';
+import { useShop } from '../shared/ShopContext';
 import { useLive, useNow } from '../shared/useLive';
+import { EditOrderDialog } from './EditOrderDialog';
+import { OrderFiles } from './OrderFiles';
 
 const SWITCHABLE: OrderStatus[] = ['received', 'printing', 'ready', 'claimed'];
 
@@ -58,17 +59,22 @@ function canPrint(file: OrderFile): boolean {
 }
 
 export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: () => void }) {
+  const { m, fmt } = useI18n();
+  const t = m.staffOrder;
+  const c = m.common;
+  const { shop } = useShop();
   const now = useNow(30_000);
   const orderQ = useLive(() => api.getOrder(orderId), `order-${orderId}`);
   const jobsQ = useLive(() => api.listPrintJobs(orderId), `jobs-${orderId}`);
   const agentQ = useLive(() => api.agentStatus(), 'agent', { pollMs: 15_000 });
   const staffQ = useLive(() => api.listStaff(), 'staff', { live: false });
 
-  const [emailOn, setEmailOn] = useState(true);
+  const [notifyOn, setNotifyOn] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [issueOpen, setIssueOpen] = useState(false);
   const [issueText, setIssueText] = useState('');
   const [issueError, setIssueError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [note, setNote] = useState('');
   const [showAllActivity, setShowAllActivity] = useState(false);
   const order = orderQ.data;
@@ -85,11 +91,11 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
 
   if (orderQ.error && !order) {
     return (
-      <Card title="Order" className="pp-stack">
-        <Alert tone="error" title="Couldn't open this order" action={<Button size="sm" onClick={orderQ.reload}>Try again</Button>}>
-          {orderQ.error}
+      <Card title={t.panel.fallbackTitle} className="pp-stack">
+        <Alert tone="error" title={t.panel.couldntOpen} action={<Button size="sm" onClick={orderQ.reload}>{c.tryAgain}</Button>}>
+          {fmt.error(orderQ.error)}
         </Alert>
-        {onClose && <Button variant="quiet" onClick={onClose}>Close</Button>}
+        {onClose && <Button variant="quiet" onClick={onClose}>{c.close}</Button>}
       </Card>
     );
   }
@@ -114,9 +120,13 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
     const j = latest.get(f.id);
     return j && j.pass === 'odd' && (j.status === 'queued' || j.status === 'printing');
   });
-  const emailable = Boolean(order.email);
+  const first = firstName(order.customerName) || order.customerName;
+  const hasEmail = Boolean(order.email);
+  const hasMessenger = Boolean(order.messengerConnectedAt) && Boolean(shop.messengerPage);
+  const reachable = hasEmail || hasMessenger;
+  const notify = notifyOn && reachable;
   const actorName = (actor: string) =>
-    actor === 'customer' ? 'Customer' : actor === 'agent' ? 'Print agent' : actor === 'system' ? 'Portal' : names.get(actor) ?? 'Staff';
+    actor === 'customer' ? t.actors.customer : actor === 'agent' ? t.actors.agent : actor === 'system' ? t.actors.system : names.get(actor) ?? t.actors.staff;
 
   /* ---------- actions ---------- */
 
@@ -124,12 +134,14 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
     const prev = order.status;
     setBusy(`status-${status}`);
     try {
-      await api.setStatus(order.id, status, { emailCustomer: emailOn && emailable, message });
-      const emailed = emailOn && emailable && (status === 'ready' || status === 'file_issue');
-      toast(`${order.code} marked ${STATUS_LABEL[status]}${emailed ? ` · Emailed ${firstName(order.customerName)}` : ''}`, {
+      await api.setStatus(order.id, status, { emailCustomer: notify, message });
+      const parts = [t.status.marked(order.code, c.status[status])];
+      if (notify && hasEmail && (status === 'ready' || status === 'file_issue')) parts.push(t.status.emailed(first));
+      if (notify && hasMessenger && status !== 'received') parts.push(t.status.messaged);
+      toast(parts.join(' · '), {
         icon: STATUS_ICON[status],
         action: {
-          label: 'Undo',
+          label: t.status.undo,
           onClick: () => {
             api.setStatus(order.id, prev, { emailCustomer: false }).catch((err) => toast.error(errorMessage(err)));
           },
@@ -167,10 +179,10 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
     try {
       const sent = await queue(files, pass);
       const twoSided = !pass && order.sides === 'two' && files.some((f) => passFor(order, f) === 'odd');
-      toast(
-        `${sent === 1 ? files[0].originalName : plural(sent, 'file')} sent to ${printer}${twoSided ? ' · odd pages first' : ''}${agent && !agent.online ? ' · waiting for the laptop' : ''}`,
-        { icon: Printer },
-      );
+      const parts = [t.jobs.sent(sent === 1 ? files[0].originalName : c.files(sent), printer)];
+      if (twoSided) parts.push(t.jobs.oddFirst);
+      if (agent && !agent.online) parts.push(t.jobs.waitingLaptop);
+      toast(parts.join(' · '), { icon: Printer });
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -184,7 +196,7 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
     try {
       const url = await api.getFileUrl(file.id, fileKind(file.originalName) === 'word' ? 'pdf' : 'original');
       if (win) win.location.href = url;
-      else toast.error('Your browser blocked the new tab. Allow pop-ups for this site, or download the file instead.');
+      else toast.error(t.files.blockedPopup);
     } catch (err) {
       win?.close();
       toast.error(errorMessage(err));
@@ -215,7 +227,7 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
     setBusy('note');
     try {
       await api.updateStaffNote(order.id, note);
-      toast('Staff note saved', { icon: StickyNote });
+      toast(t.staffNote.saved, { icon: StickyNote });
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -225,7 +237,7 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
 
   const submitIssue = async () => {
     if (!issueText.trim()) {
-      setIssueError('Tell the customer what is wrong and what to send.');
+      setIssueError(t.issue.required);
       return;
     }
     const ok = await changeStatus('file_issue', issueText.trim());
@@ -241,19 +253,45 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
   const jobLine = (file: OrderFile) => {
     const j = latest.get(file.id);
     if (!j) return null;
-    const pass = j.pass === 'odd' ? ' · odd pages' : j.pass === 'even' ? ' · even pages' : '';
+    const pass = j.pass === 'odd' ? ` · ${t.jobs.oddPages}` : j.pass === 'even' ? ` · ${t.jobs.evenPages}` : '';
     switch (j.status) {
       case 'queued':
-        return <span className="pp-job">Queued for {j.printer}{pass}{agent && !agent.online ? ' · laptop offline' : ''}</span>;
+        return (
+          <span className="pp-job">
+            {t.jobs.queued(j.printer)}
+            {pass}
+            {agent && !agent.online ? ` · ${t.jobs.laptopOffline}` : ''}
+          </span>
+        );
       case 'printing':
-        return <span className="pp-job"><span className="mn-btn-spin" aria-hidden="true" style={{ width: 10, height: 10 }} />Printing on {j.printer}{pass}</span>;
+        return (
+          <span className="pp-job">
+            <span className="mn-btn-spin" aria-hidden="true" style={{ width: 10, height: 10 }} />
+            {t.jobs.printing(j.printer)}
+            {pass}
+          </span>
+        );
       case 'printed':
-        return <span className="pp-job"><Icon icon={Check} size={12} />Printed{j.createdAt ? ` ${formatDuration(j.createdAt, now)} ago` : ''}{pass}</span>;
+        return (
+          <span className="pp-job">
+            <Icon icon={Check} size={12} />
+            {j.createdAt ? t.jobs.printedAgo(fmt.duration(j.createdAt, now)) : t.jobs.printed}
+            {pass}
+          </span>
+        );
       case 'failed':
         return (
           <span className="pp-job is-failed">
-            <Icon icon={TriangleAlert} size={12} />Error: {j.error ?? 'Print failed'}
-            <button type="button" className="pp-linkbtn" onClick={() => printFiles([file], `retry-${file.id}`, j.pass)}>Retry</button>
+            <Icon icon={TriangleAlert} size={12} />
+            {fmt.error(j.error ?? t.jobs.failedDefault)}
+            <button
+              type="button"
+              className="pp-linkbtn"
+              aria-label={t.jobs.retryAria(file.originalName)}
+              onClick={() => printFiles([file], `file-${file.id}`, j.pass)}
+            >
+              {t.jobs.retry}
+            </button>
           </span>
         );
     }
@@ -261,166 +299,179 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
 
   const next: { label: string; icon: IconType; run: () => void } | null =
     order.status === 'printing'
-      ? { label: 'Mark as ready', icon: Check, run: () => changeStatus('ready') }
+      ? { label: t.panel.markReady, icon: Check, run: () => changeStatus('ready') }
       : order.status === 'ready'
-        ? { label: 'Mark as claimed', icon: PackageCheck, run: () => changeStatus('claimed') }
+        ? { label: t.panel.markClaimed, icon: PackageCheck, run: () => changeStatus('claimed') }
         : order.status === 'file_issue'
-          ? { label: 'File fixed: back to Received', icon: Undo2, run: () => changeStatus('received') }
+          ? { label: t.panel.backToReceived, icon: Undo2, run: () => changeStatus('received') }
           : null;
 
   const issueEvent = [...order.events].reverse().find((e) => e.toStatus === 'file_issue');
   const activity: TimelineItem[] = [...order.events].reverse().map((e, i) => {
-    const who = actorName(e.actor);
     let title: string;
     let icon: IconType = StickyNote;
-    if (e.type === 'status_change' && e.toStatus) {
-      icon = STATUS_ICON[e.toStatus];
-      title = !e.fromStatus
-        ? order.source === 'walk_in' ? 'Walk-in order added' : 'Order sent online'
-        : `Marked ${STATUS_LABEL[e.toStatus]}`;
-    } else if (e.type === 'email') {
-      icon = Mail;
-      title = e.message ?? 'Email sent';
-    } else if (e.type === 'print') {
-      icon = Printer;
-      title = e.message ?? 'Printed';
-    } else {
-      title = 'Staff note';
+    let body: string | undefined;
+    switch (e.type) {
+      case 'status_change':
+        if (e.toStatus) {
+          icon = STATUS_ICON[e.toStatus];
+          title = !e.fromStatus
+            ? order.source === 'walk_in' ? t.activity.walkInAdded : t.activity.sentOnline
+            : t.activity.marked(c.status[e.toStatus]);
+        } else {
+          title = t.activity.edit;
+        }
+        body = e.message;
+        break;
+      case 'email':
+        icon = Mail;
+        title = t.activity.email;
+        body = e.message;
+        break;
+      case 'print':
+        icon = Printer;
+        title = t.activity.print;
+        body = e.message;
+        break;
+      case 'edit':
+        icon = Pencil;
+        title = t.activity.edit;
+        body = e.message;
+        break;
+      case 'messenger':
+        icon = MessageCircle;
+        title = t.activity.messenger;
+        body = e.message;
+        break;
+      default:
+        title = t.activity.note;
+        body = e.message;
     }
     return {
       title,
-      body: e.type === 'note' || (e.type === 'status_change' && e.message) ? e.message : undefined,
-      time: `${formatWhen(e.createdAt)} · ${who}`,
+      // Stored messages are English data from the backend; they show under a translated title.
+      body: body ? <span lang="en">{body}</span> : undefined,
+      time: `${fmt.when(e.createdAt)} · ${actorName(e.actor)}`,
       icon,
       strong: i === 0,
     };
   });
 
+  const notifyHint = reachable ? (
+    <>
+      {hasEmail && <span className="so-hint-line">{t.status.notifyEmail}</span>}
+      {hasMessenger && <span className="so-hint-line">{t.status.notifyMessenger}</span>}
+    </>
+  ) : (
+    t.status.noChannelHint
+  );
+
   return (
     <Card
       as="section"
-      aria-label={`Order ${order.code}`}
+      aria-label={t.panel.ariaLabel(order.code)}
       className="pp-panel"
       title={<span className="t-mono-id">{order.code}</span>}
-      meta={`${order.source === 'walk_in' ? 'Walk-in' : 'Online'} · ${formatWhen(order.createdAt)}`}
+      meta={`${order.source === 'walk_in' ? t.panel.walkIn : t.panel.online} · ${fmt.when(order.createdAt)}`}
       actions={<StatusTag status={order.status} />}
     >
+      <div className="so-toolbar">
+        {next && (
+          <Button variant="primary" icon={next.icon} loading={busy?.startsWith('status')} onClick={next.run}>
+            {next.label}
+          </Button>
+        )}
+        <Button icon={Pencil} onClick={() => setEditOpen(true)}>
+          {t.panel.editOrder}
+        </Button>
+      </div>
+
       {order.status === 'file_issue' && issueEvent?.message && (
-        <Alert tone="warning" title="On hold: file issue">
+        <Alert tone="warning" title={t.panel.onHold}>
           {issueEvent.message}
         </Alert>
       )}
 
-      {next && (
-        <div className="pp-row">
-          <Button variant="primary" icon={next.icon} loading={busy?.startsWith('status')} onClick={next.run}>
-            {next.label}
-          </Button>
-        </div>
-      )}
       {order.status === 'claimed' && order.claimedAt && (
-        <p className="t-small">Claimed {formatWhen(order.claimedAt)}. Files are deleted 7 days after the claim.</p>
+        <p className="t-small">{t.panel.claimedNote(fmt.when(order.claimedAt))}</p>
       )}
 
       <div className="pp-panel-section">
-        <span className="t-label">Customer</span>
+        <h3 className="t-label so-h">{t.customer.label}</h3>
         <p className="t-body-strong">{order.customerName}</p>
         <div className="pp-row">
           {order.email ? (
-            <ButtonAnchor href={`mailto:${order.email}?subject=${encodeURIComponent(`Order ${order.code}`)}`} size="sm" variant="quiet" icon={Mail} style={{ paddingLeft: 0 }}>
+            <ButtonAnchor
+              href={`mailto:${order.email}?subject=${encodeURIComponent(t.customer.mailSubject(order.code))}`}
+              size="sm"
+              variant="quiet"
+              icon={Mail}
+              className="so-contact"
+            >
               {order.email}
             </ButtonAnchor>
           ) : (
-            <span className="t-meta">No email</span>
+            <span className="t-meta">{t.customer.noEmail}</span>
           )}
           {order.phone ? (
-            <ButtonAnchor href={`tel:${order.phone.replace(/\s/g, '')}`} size="sm" variant="quiet" icon={Phone}>
+            <ButtonAnchor href={`tel:${order.phone.replace(/\s/g, '')}`} size="sm" variant="quiet" icon={Phone} className="so-contact">
               {order.phone}
             </ButtonAnchor>
           ) : (
-            <span className="t-meta">No mobile number</span>
+            <span className="t-meta">{t.customer.noPhone}</span>
           )}
         </div>
+        {order.messengerConnectedAt && (
+          <p className="so-messenger">
+            <Icon icon={MessageCircle} />
+            {t.customer.messenger}
+          </p>
+        )}
       </div>
 
-      <div className="pp-panel-section">
-        <div className="pp-row-between">
-          <span className="t-label">Files</span>
-          <span className="t-meta">{filesSummary(order)}</span>
-        </div>
-        <ul className="pp-file-list">
-          {order.files.map((f) => {
-            const ready = canPrint(f);
-            return (
-              <li key={f.id} className="pp-file-row" style={{ alignItems: 'flex-start' }}>
-                <FileBadge name={f.originalName} small />
-                <div className="pp-file-info">
-                  <span className="pp-file-name" title={f.originalName}>{f.originalName}</span>
-                  <span className="t-meta">{fileLine(f)}</span>
-                  {jobLine(f)}
-                </div>
-                <div className="pp-file-actions">
-                  <IconButton icon={Eye} size="sm" label={ready ? `Preview ${f.originalName}` : `${f.originalName} is converting`} disabled={!ready} onClick={() => openFile(f)} />
-                  <IconButton
-                    icon={Printer}
-                    size="sm"
-                    label={ready ? `Print ${f.originalName} on the counter printer` : `${f.originalName} is converting`}
-                    disabled={!ready}
-                    loading={busy === `file-${f.id}`}
-                    onClick={() => printFiles([f], `file-${f.id}`)}
-                  />
-                  <IconButton icon={Download} size="sm" label={`Download ${f.originalName}`} onClick={() => download(f)} />
-                  {canPrintOnThisPhone() && (
-                    <IconButton
-                      icon={Smartphone}
-                      size="sm"
-                      label={`Print ${f.originalName} on this phone`}
-                      disabled={!ready}
-                      loading={busy === `phone-${f.id}`}
-                      onClick={() => printOnPhone(f)}
-                    />
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+      <OrderFiles
+        order={order}
+        canPrint={canPrint}
+        jobLine={jobLine}
+        printingFileId={busy?.startsWith('file-') ? busy.slice(5) : null}
+        onPrint={(f) => printFiles([f], `file-${f.id}`)}
+        onPreview={openFile}
+        onDownload={download}
+        onPrintOnPhone={printOnPhone}
+        onBackToReceived={() => void changeStatus('received')}
+      />
 
       <SettingsList order={order} columns={2} />
 
       {order.notes && (
         <div className="pp-note">
-          <span className="t-label">Customer note</span>
+          <span className="t-label">{t.customerNote}</span>
           <p>{order.notes}</p>
         </div>
       )}
 
       <div className="pp-panel-section">
-        <span className="t-label">Counter printer</span>
+        <h3 className="t-label so-h">{t.printer.label}</h3>
         <p className="pp-row t-small" style={{ color: 'var(--ink-2)' }}>
           <span className={agent?.online ? 'pp-dot' : 'pp-dot is-off'} aria-hidden="true" />
           {agent == null
-            ? 'Checking the printer…'
+            ? t.printer.checking
             : agent.online
-              ? `Online · prints on ${printer}`
-              : `Offline · jobs wait until the shop laptop is back${agent.lastSeenAt ? ` (last seen ${formatDuration(agent.lastSeenAt, now)} ago)` : ''}`}
+              ? t.printer.online(printer)
+              : `${t.printer.offline}${agent.lastSeenAt ? ` (${t.printer.lastSeen(fmt.duration(agent.lastSeenAt, now))})` : ''}`}
         </p>
         {awaitingFlip.length > 0 && !oddRunning && (
           <div className="pp-flip" role="status">
-            <p className="t-body-strong">Flip the stack for two-sided</p>
-            <p className="t-ink-2">
-              Odd pages are done{awaitingFlip.length > 1 ? ` for ${plural(awaitingFlip.length, 'file')}` : ''}. Take the printed stack, turn it over
-              without changing the order, put it back in the tray, then continue.
-            </p>
+            <p className="t-body-strong">{t.printer.flipTitle}</p>
+            <p className="t-ink-2">{t.printer.flipBody(awaitingFlip.length > 1 ? c.files(awaitingFlip.length) : null)}</p>
             <div>
               <Button icon={Printer} loading={busy === 'even'} onClick={() => printFiles(awaitingFlip, 'even', 'even')}>
-                Continue: print even pages
+                {t.printer.flipContinue}
               </Button>
             </div>
           </div>
         )}
-        {oddRunning && <p className="t-small">Printing odd pages. When they're done, you'll be asked to flip the stack.</p>}
+        {oddRunning && <p className="t-small">{t.printer.oddRunning}</p>}
         <div className="pp-row">
           <Button
             variant={order.status === 'received' ? 'primary' : 'secondary'}
@@ -429,45 +480,48 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
             loading={busy === 'all'}
             onClick={() => printFiles(printable, 'all')}
           >
-            {printable.length === order.files.length ? 'Print all files' : `Print ${plural(printable.length, 'ready file')}`}
+            {printable.length === order.files.length ? t.printer.printAll : t.printer.printReady(printable.length)}
           </Button>
         </div>
-        {printable.length < order.files.length && (
-          <p className="t-small">Word files print once the shop laptop converts them to PDF.</p>
-        )}
-        {canPrintOnThisPhone() && (
-          <p className="t-small">Printer cable on this phone? Use the phone button on a file to share it to NokoPrint.</p>
-        )}
+        {printable.length < order.files.length && <p className="t-small">{t.printer.wordNote}</p>}
+        {canPrintOnThisPhone() && <p className="t-small">{t.printer.phoneNote}</p>}
       </div>
 
       <div className="pp-panel-section">
-        <span className="t-label" id={`status-${order.id}`}>Status</span>
+        <h3 className="t-label so-h" id={`status-${order.id}`}>{t.status.label}</h3>
         <Segmented<OrderStatus>
           labelledBy={`status-${order.id}`}
           value={order.status}
           wrap
           onChange={(s) => changeStatus(s)}
-          options={SWITCHABLE.map((s) => ({ value: s, label: s === 'ready' ? 'Ready' : STATUS_LABEL[s] }))}
+          options={SWITCHABLE.map((s) => ({ value: s, label: c.statusShort[s] }))}
         />
         <div>
-          <Button variant="quiet" size="sm" icon={TriangleAlert} style={{ paddingLeft: 0 }} onClick={() => setIssueOpen(true)} disabled={order.status === 'claimed'}>
-            Report a file issue
+          <Button
+            variant="quiet"
+            size="sm"
+            icon={TriangleAlert}
+            className="so-flush"
+            onClick={() => setIssueOpen(true)}
+            disabled={order.status === 'claimed'}
+          >
+            {t.status.reportIssue}
           </Button>
         </div>
         <Checkbox
-          checked={emailOn && emailable}
-          disabled={!emailable}
-          onChange={(e) => setEmailOn(e.target.checked)}
-          label={emailable ? `Email ${firstName(order.customerName)} when the status changes` : 'No email on this order'}
-          hint={emailable ? 'Sends the Ready for pickup and File issue emails.' : 'Call or text them instead.'}
+          checked={notify}
+          disabled={!reachable}
+          onChange={(e) => setNotifyOn(e.target.checked)}
+          label={reachable ? t.status.notify(first) : t.status.noChannel}
+          hint={notifyHint}
         />
       </div>
 
       <div className="pp-panel-section">
         <TextAreaField
-          label="Staff note"
-          placeholder="Add a note for other staff"
-          hint="Only staff can see this."
+          label={t.staffNote.label}
+          placeholder={t.staffNote.placeholder}
+          hint={t.staffNote.hint}
           value={note}
           maxLength={2000}
           onChange={(e) => setNote(e.target.value)}
@@ -475,19 +529,19 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
         />
         {(note.trim() || null) !== (order.staffNote ?? null) && (
           <div className="pp-row">
-            <Button size="sm" variant="primary" loading={busy === 'note'} onClick={saveNote}>Save note</Button>
-            <Button size="sm" variant="quiet" onClick={() => setNote(order.staffNote ?? '')}>Cancel</Button>
+            <Button size="sm" variant="primary" loading={busy === 'note'} onClick={saveNote}>{t.staffNote.save}</Button>
+            <Button size="sm" variant="quiet" onClick={() => setNote(order.staffNote ?? '')}>{c.cancel}</Button>
           </div>
         )}
       </div>
 
       <div className="pp-panel-section">
-        <span className="t-label">Activity</span>
+        <h3 className="t-label so-h">{t.activity.label}</h3>
         <Timeline items={showAllActivity ? activity : activity.slice(0, 5)} />
         {activity.length > 5 && (
           <div>
-            <Button size="sm" variant="quiet" style={{ paddingLeft: 0 }} onClick={() => setShowAllActivity((v) => !v)}>
-              {showAllActivity ? 'Show less' : `Show all ${activity.length} events`}
+            <Button size="sm" variant="quiet" className="so-flush" aria-expanded={showAllActivity} onClick={() => setShowAllActivity((v) => !v)}>
+              {showAllActivity ? t.activity.showLess : t.activity.showAll(activity.length)}
             </Button>
           </div>
         )}
@@ -495,28 +549,30 @@ export function OrderPanel({ orderId, onClose }: { orderId: string; onClose?: ()
 
       {onClose && (
         <div className="pp-row">
-          <Button variant="quiet" onClick={onClose}>Close</Button>
+          <Button variant="quiet" onClick={onClose}>{c.close}</Button>
         </div>
       )}
+
+      <EditOrderDialog order={order} open={editOpen} onClose={() => setEditOpen(false)} />
 
       <Dialog
         open={issueOpen}
         onClose={() => setIssueOpen(false)}
-        title="Report a file issue"
-        description={`The order goes on hold${emailable && emailOn ? ` and we email ${firstName(order.customerName)} your message` : ''}.`}
+        title={t.issue.title}
+        description={notify ? t.issue.onHoldNotify(first) : t.issue.onHold}
         footer={
           <>
-            <Button variant="quiet" onClick={() => setIssueOpen(false)}>Cancel</Button>
+            <Button variant="quiet" onClick={() => setIssueOpen(false)}>{c.cancel}</Button>
             <Button variant="primary" icon={TriangleAlert} loading={busy === 'status-file_issue'} onClick={submitIssue}>
-              Report file issue
+              {t.issue.submit}
             </Button>
           </>
         }
       >
         <TextAreaField
-          label="Message to the customer"
-          placeholder="The scan is cut off on page 2. Please send a full copy."
-          hint="Say what's wrong and what to send. Keep it short."
+          label={t.issue.messageLabel}
+          placeholder={t.issue.placeholder}
+          hint={t.issue.hint}
           value={issueText}
           error={issueError}
           data-autofocus

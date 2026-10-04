@@ -4,7 +4,8 @@ import { LogIn } from 'lucide-react';
 import { errorMessage, isMock } from '../api';
 import { MOCK_PASSWORD } from '../api/mockApi';
 import { SEED_STAFF } from '../api/seed';
-import { Alert, Button, Card, Field } from '../design/components';
+import { Alert, Button, Card, Field, Segmented } from '../design/components';
+import { useI18n, type Lang } from '../i18n';
 import { BrandMark } from '../shared/BrandMark';
 import { MockBar } from '../shared/MockBar';
 import { useShop } from '../shared/ShopContext';
@@ -12,6 +13,8 @@ import { useStaffSession } from '../shared/StaffSession';
 
 export function LoginPage() {
   const { shop } = useShop();
+  const { m, fmt, lang, setLang } = useI18n();
+  const t = m.staff.login;
   const { staff, signIn } = useStaffSession();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -27,7 +30,7 @@ export function LoginPage() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
-      setError('Enter your email and password.');
+      setError(fmt.error(t.missing));
       return;
     }
     setBusy(true);
@@ -36,7 +39,7 @@ export function LoginPage() {
       await signIn(email, password);
       navigate(target, { replace: true });
     } catch (err) {
-      setError(errorMessage(err));
+      setError(fmt.error(errorMessage(err)));
       setBusy(false);
     }
   };
@@ -55,30 +58,43 @@ export function LoginPage() {
           </Link>
           <Card className="pp-stack" as="div">
             <div className="pp-stack-2">
-              <h1 className="t-title">Staff sign in</h1>
-              <p className="t-ink-2">For shop staff only. Customers don't need an account.</p>
+              <h1 className="t-title">{t.title}</h1>
+              <p className="t-ink-2">{t.intro}</p>
             </div>
             <form className="pp-stack" onSubmit={onSubmit} noValidate>
-              <Field label="Email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <Field label="Password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Field label={t.email} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Field label={t.password} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
               {error && <Alert tone="error">{error}</Alert>}
-              <Button type="submit" variant="primary" size="lg" fullWidth icon={LogIn} loading={busy}>Sign in</Button>
+              <Button type="submit" variant="primary" size="lg" fullWidth icon={LogIn} loading={busy}>{t.signIn}</Button>
             </form>
-            <p className="t-small">Forgot your password? Ask the owner to reset it.</p>
+            <p className="t-small">{t.forgot}</p>
           </Card>
           {isMock && (
             <Card tone="sunk" as="div" className="pp-stack-2">
-              <span className="t-label">Sample accounts</span>
+              <span className="t-label">{t.sampleTitle}</span>
+              <p className="t-small">{t.sampleHint}</p>
               <p className="t-small" style={{ color: 'var(--ink-2)' }}>
-                Owner: <button type="button" className="pp-linkbtn" onClick={() => { setEmail(owner.email); setPassword(MOCK_PASSWORD); }}>{owner.email}</button>
+                {t.owner} <button type="button" className="pp-linkbtn" onClick={() => { setEmail(owner.email); setPassword(MOCK_PASSWORD); }}>{owner.email}</button>
                 <br />
-                Staff: <button type="button" className="pp-linkbtn" onClick={() => { setEmail(helper.email); setPassword(MOCK_PASSWORD); }}>{helper.email}</button>
+                {t.staff} <button type="button" className="pp-linkbtn" onClick={() => { setEmail(helper.email); setPassword(MOCK_PASSWORD); }}>{helper.email}</button>
                 <br />
-                Password for both: <span className="t-mono-id">{MOCK_PASSWORD}</span>
+                {t.passwordBoth} <span className="t-mono-id">{MOCK_PASSWORD}</span>
               </p>
             </Card>
           )}
-          <Link to="/" className="t-small" style={{ color: 'var(--ink-2)' }}>Back to the customer site</Link>
+          <div className="pp-staff-display-row">
+            <span className="t-label" id="login-lang">{m.common.language}</span>
+            <Segmented<Lang>
+              labelledBy="login-lang"
+              value={lang}
+              onChange={setLang}
+              options={[
+                { value: 'fil', label: <span lang="fil">{m.common.filipino}</span> },
+                { value: 'en', label: <span lang="en">{m.common.english}</span> },
+              ]}
+            />
+          </div>
+          <Link to="/" className="t-small" style={{ color: 'var(--ink-2)' }}>{t.backToSite}</Link>
         </div>
       </div>
     </>

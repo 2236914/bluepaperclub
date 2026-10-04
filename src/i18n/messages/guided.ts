@@ -1,4 +1,180 @@
-/* Messages for the guided area. Same rules as common.ts: `fil` must match `en` key for key. */
-export const en = {};
+/* Messages for the guided area (step-by-step order, one question per screen).
+ * Same rules as common.ts: `fil` must match `en` key for key. Field labels, file
+ * problems and validation errors come from m.form so both forms say the same thing. */
+export const en = {
+  rootLabel: 'Send files, step by step',
+  stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
+  announce: (n: number, total: number, title: string) => `Step ${n} of ${total}: ${title}`,
+  showAll: 'Show everything on one page',
+  backToSummary: 'Back to the summary',
+  missingTitle: 'Please fix this first:',
 
-export const fil: typeof en = {};
+  files: {
+    title: 'Choose your files',
+    intro: 'Add the files you want us to print. You can add up to 10 files.',
+    howTitle: 'How to add files',
+    how: [
+      'Tap the big box below.',
+      'Find your file and tap it. You can choose more than one.',
+      'Check each file, then tap the button at the bottom.',
+    ],
+    zone: 'Tap here to choose files',
+    zoneMore: 'Add another file',
+    zoneHint: 'PDF, Word, or JPG and PNG photos · up to 20 MB each',
+    checkTitle: 'Are these the right files?',
+    checkIntro: 'Tap “Open to check” to look at a file. Remove any file you don’t want printed.',
+    fileOf: (i: number, n: number) => `File ${i} of ${n}`,
+    type: 'Type',
+    pages: 'Pages',
+    size: 'Size',
+    kinds: { pdf: 'PDF document', word: 'Word document', image: 'Photo', other: 'Unknown type' },
+    kindOther: (ext: string) => `${ext} file`,
+    pagesWord: 'We count them after we turn it into a PDF',
+    pagesCounting: 'Counting…',
+    pagesLater: 'We will count them at the shop',
+    open: 'Open to check',
+    openLabel: (name: string) => `Open ${name} to check. It opens in a new tab.`,
+    problemTitle: "We can't print this file",
+    fixLabel: 'What to do:',
+    confirm: 'Yes, these are the right files',
+  },
+
+  paper: {
+    title: 'What size of paper?',
+    intro: 'If you are not sure, choose Short. Most papers in school and the office are Short.',
+    uses: {
+      short: 'Most school and office papers',
+      a4: 'International documents',
+      long: 'Forms and legal documents',
+    },
+    selected: 'Selected',
+  },
+
+  print: {
+    title: 'How should we print it?',
+    intro: 'Choose the color, the sides of the paper and how many copies.',
+    colorTitle: 'Color',
+    colorHint: { bw: 'For text, forms and most school work', color: 'For photos, charts and pictures' },
+    sidesTitle: 'Sides of the paper',
+    sidesHint: { one: 'Print on the front of each sheet only', two: 'Print on the front and the back. Uses less paper.' },
+    copiesTitle: 'How many copies?',
+    copiesHint: 'Each file is printed this many times.',
+    notesTitle: 'Notes',
+    notesHint: 'Optional. For example: staple each set, or print page 3 in color only.',
+  },
+
+  about: {
+    title: 'About you',
+    titleWalkIn: 'The customer',
+    intro: 'We email your order ID here. You need it to track your order and to claim it.',
+    introWalkIn: 'Email is optional. Without one, the customer can’t track the order online.',
+  },
+
+  review: {
+    title: 'Check and send',
+    intro: 'Check your order below. To fix something, tap “Change”.',
+    filesSection: 'Files',
+    paperSection: 'Paper size',
+    printSection: 'How to print',
+    aboutSection: 'About you',
+    changeLabel: (section: string) => `Change: ${section}`,
+    noNotes: 'No notes',
+    noPhone: 'No mobile number',
+    noEmail: 'No email',
+    send: 'Send my order',
+    sendWalkIn: 'Add order',
+    sending: 'Sending your files',
+    overall: 'All files',
+    readAloud: (files: string, paper: string, print: string, name: string) =>
+      `Your order: ${files}. Paper: ${paper}. ${print}. Name: ${name}. If everything is right, tap Send my order.`,
+  },
+};
+
+export const fil: typeof en = {
+  rootLabel: 'Ipadala ang mga file, isa-isang hakbang',
+  stepOf: (n: number, total: number) => `Hakbang ${n} ng ${total}`,
+  announce: (n: number, total: number, title: string) => `Hakbang ${n} ng ${total}: ${title}`,
+  showAll: 'Ipakita lahat sa isang pahina',
+  backToSummary: 'Bumalik sa buod',
+  missingTitle: 'Pakiayos muna po ito:',
+
+  files: {
+    title: 'Piliin ang inyong mga file',
+    intro: 'Idagdag ang mga file na gusto ninyong ipa-print. Hanggang 10 file ang puwede.',
+    howTitle: 'Paano magdagdag ng file',
+    how: [
+      'Pindutin ang malaking kahon sa ibaba.',
+      'Hanapin ang inyong file at pindutin ito. Puwedeng pumili ng higit sa isa.',
+      'Tingnan ang bawat file, saka pindutin ang button sa ibaba.',
+    ],
+    zone: 'Pindutin dito para pumili ng file',
+    zoneMore: 'Magdagdag pa ng file',
+    zoneHint: 'PDF, Word, o litratong JPG at PNG · hanggang 20 MB bawat isa',
+    checkTitle: 'Tama ba ang mga file na ito?',
+    checkIntro: 'Pindutin ang “Tingnan” para makita ang file. Alisin ang file na ayaw ninyong ipa-print.',
+    fileOf: (i: number, n: number) => `File ${i} ng ${n}`,
+    type: 'Uri',
+    pages: 'Pahina',
+    size: 'Laki',
+    kinds: { pdf: 'PDF na dokumento', word: 'Word na dokumento', image: 'Litrato', other: 'Hindi alam ang uri' },
+    kindOther: (ext: string) => `${ext} na file`,
+    pagesWord: 'Bibilangin kapag nagawa na itong PDF',
+    pagesCounting: 'Binibilang pa…',
+    pagesLater: 'Bibilangin namin sa shop',
+    open: 'Tingnan',
+    openLabel: (name: string) => `Tingnan ang ${name}. Magbubukas ito sa bagong tab.`,
+    problemTitle: 'Hindi namin ma-print ang file na ito',
+    fixLabel: 'Ang gagawin:',
+    confirm: 'Oo, tama ang mga file na ito',
+  },
+
+  paper: {
+    title: 'Anong laki ng papel?',
+    intro: 'Kung hindi kayo sigurado, piliin ang Short. Short ang karaniwang papel sa paaralan at opisina.',
+    uses: {
+      short: 'Karamihan ng papel sa paaralan at opisina',
+      a4: 'Mga dokumento para sa ibang bansa',
+      long: 'Mga form at legal na dokumento',
+    },
+    selected: 'Napili',
+  },
+
+  print: {
+    title: 'Paano namin ipi-print?',
+    intro: 'Piliin ang kulay, ang panig ng papel, at kung ilang kopya.',
+    colorTitle: 'Kulay',
+    colorHint: { bw: 'Para sa sulat, form at karamihan ng gawain sa paaralan', color: 'Para sa litrato, chart at larawan' },
+    sidesTitle: 'Panig ng papel',
+    sidesHint: { one: 'Sa harap lang ng bawat papel', two: 'Sa harap at sa likod. Mas kaunting papel ang gamit.' },
+    copiesTitle: 'Ilang kopya?',
+    copiesHint: 'Ganito karaming beses ipi-print ang bawat file.',
+    notesTitle: 'Bilin',
+    notesHint: 'Hindi kailangan. Halimbawa: i-staple ang bawat set, o pahina 3 lang ang may kulay.',
+  },
+
+  about: {
+    title: 'Tungkol sa inyo',
+    titleWalkIn: 'Ang customer',
+    intro: 'Ipapadala namin ang inyong order ID sa email. Kailangan ninyo ito para tingnan ang status at para kunin ang order.',
+    introWalkIn: 'Hindi kailangan ang email. Kung wala, hindi masusubaybayan ng customer ang order online.',
+  },
+
+  review: {
+    title: 'Suriin at ipadala',
+    intro: 'Tingnan ang inyong order sa ibaba. Para may baguhin, pindutin ang “Baguhin”.',
+    filesSection: 'Mga file',
+    paperSection: 'Laki ng papel',
+    printSection: 'Paano ipi-print',
+    aboutSection: 'Tungkol sa inyo',
+    changeLabel: (section: string) => `Baguhin: ${section}`,
+    noNotes: 'Walang bilin',
+    noPhone: 'Walang numero ng cellphone',
+    noEmail: 'Walang email',
+    send: 'Ipadala ang order',
+    sendWalkIn: 'Idagdag ang order',
+    sending: 'Ipinapadala ang inyong mga file',
+    overall: 'Lahat ng file',
+    readAloud: (files: string, paper: string, print: string, name: string) =>
+      `Ang inyong order: ${files}. Papel: ${paper}. ${print}. Pangalan: ${name}. Kung tama na ang lahat, pindutin ang Ipadala ang order.`,
+  },
+};

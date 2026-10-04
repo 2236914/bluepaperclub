@@ -9,6 +9,7 @@ import { Banknote, BookmarkCheck, Check, Mail, PenLine, Smartphone } from 'lucid
 import { Button, Dialog, Icon } from '../design/components';
 import { useI18n } from '../i18n';
 import { addRecentOrder, rememberDetails } from '../lib/remember';
+import { MessengerConnect } from './MessengerConnect';
 import { CopyCodeButton } from './OrderBits';
 import { ReadAloudButton } from './ReadAloudButton';
 
@@ -108,9 +109,11 @@ export function ThankYouDialog({ open, onClose, code, name, email, phone, rememb
           )}
         </ul>
 
-        <div>
+        <div className="pp-ty-read">
           <ReadAloudButton text={speech} size="lg" />
         </div>
+
+        {email && <MessengerConnect code={code} email={email} className="pp-ty-msgr" />}
 
         {askToRemember && (
           <section className="pp-ty-remember" aria-labelledby="pp-ty-remember-title">

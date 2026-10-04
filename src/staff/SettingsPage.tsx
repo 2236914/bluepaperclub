@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Plus, Printer, RotateCcw, Save, UserPlus } from 'lucide-react';
+import { MessageCircle, Plus, Printer, RotateCcw, Save, UserPlus } from 'lucide-react';
 import { api, errorMessage, mockControls, type ShopSettings, type StaffMember, type StaffRole } from '../api';
 import {
   Alert,
@@ -7,6 +7,7 @@ import {
   Card,
   Dialog,
   Field,
+  Icon,
   SelectField,
   Skeleton,
   Switch,
@@ -14,7 +15,8 @@ import {
   Tabs,
   toast,
 } from '../design/components';
-import { PAPER_LABEL, formatDuration } from '../lib/format';
+import { useI18n } from '../i18n';
+import { PAPER_LABEL } from '../lib/format';
 import { PRINTER_FOR_PAPER } from '../lib/printers';
 import { useShop } from '../shared/ShopContext';
 import { useStaffSession } from '../shared/StaffSession';
@@ -24,22 +26,24 @@ type Tab = 'shop' | 'staff' | 'printers';
 
 export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('shop');
+  const { m } = useI18n();
+  const t = m.staff.settings;
   return (
     <main className="pp-staff-main" id="main">
       <div className="pp-stack-2">
-        <h1 className="t-display">Shop settings</h1>
-        <p className="t-ink-2">Only the owner can see and change these.</p>
+        <h1 className="t-display">{t.title}</h1>
+        <p className="t-ink-2">{t.intro}</p>
       </div>
       <div>
         <Tabs<Tab>
           idBase="settings"
-          label="Settings"
+          label={t.tabsLabel}
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: 'shop', label: 'Shop details' },
-            { value: 'staff', label: 'Staff accounts' },
-            { value: 'printers', label: 'Printers' },
+            { value: 'shop', label: t.tabs.shop },
+            { value: 'staff', label: t.tabs.staff },
+            { value: 'printers', label: t.tabs.printers },
           ]}
         />
         <TabPanel idBase="settings" value={tab}>
@@ -54,6 +58,8 @@ export function SettingsPage() {
 
 function ShopDetails() {
   const { shop, refresh } = useShop();
+  const { m, fmt } = useI18n();
+  const t = m.staff.settings;
   const [form, setForm] = useState<ShopSettings>(shop);
   const [days, setDays] = useState(String(shop.unclaimedDays));
   const [busy, setBusy] = useState(false);
@@ -71,9 +77,9 @@ function ShopDetails() {
     try {
       await api.updateShop({ ...form, unclaimedDays: Number.parseInt(days, 10) });
       refresh();
-      toast('Shop details saved', { icon: Save });
+      toast(t.shop.saved, { icon: Save });
     } catch (err) {
-      setError(errorMessage(err));
+      setError(fmt.error(errorMessage(err)));
     } finally {
       setBusy(false);
     }
@@ -81,34 +87,55 @@ function ShopDetails() {
 
   return (
     <form onSubmit={onSave} className="pp-two-col" noValidate>
-      <Card title="Shop details" meta="Shown on the customer site, pickup details and emails" className="pp-stack">
-        <Field label="Shop name" value={form.name} onChange={set('name')} />
-        <Field label="Address" value={form.address} onChange={set('address')} hint="Street, barangay and city." />
-        <Field label="Opening hours" value={form.hours} onChange={set('hours')} hint="For example: Mon–Sat 8:00 AM–7:00 PM" />
+      <Card title={t.shop.title} meta={t.shop.meta} className="pp-stack">
+        <Field label={t.shop.name} value={form.name} onChange={set('name')} />
+        <Field label={t.shop.address} value={form.address} onChange={set('address')} hint={t.shop.addressHint} />
+        <Field label={t.shop.hours} value={form.hours} onChange={set('hours')} hint={t.shop.hoursHint} />
         <div className="pp-split">
-          <Field label="Phone" type="tel" value={form.phone} onChange={set('phone')} />
-          <Field label="Email" type="email" value={form.email} onChange={set('email')} hint="Customers reply here." />
+          <Field label={t.shop.phone} type="tel" value={form.phone} onChange={set('phone')} />
+          <Field label={t.shop.email} type="email" value={form.email} onChange={set('email')} hint={t.shop.emailHint} />
         </div>
-        {error && <Alert tone="error">{error}</Alert>}
-        <div><Button type="submit" variant="primary" icon={Save} loading={busy}>Save changes</Button></div>
-      </Card>
-      <Card tone="sunk" title="Keeping files" className="pp-stack">
-        <p className="t-ink-2">Files are deleted 7 days after an order is claimed. Orders that are never claimed lose their files after:</p>
         <Field
-          label="Unclaimed orders"
-          inputMode="numeric"
-          value={days}
-          suffix="days"
-          onChange={(e) => setDays(e.target.value.replace(/\D/g, '').slice(0, 3))}
-          hint="Counted from when the order is marked Ready. Order records are kept without files."
+          label={t.shop.messengerPage}
+          value={form.messengerPage ?? ''}
+          onChange={set('messengerPage')}
+          hint={t.shop.messengerHint}
+          icon={MessageCircle}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
         />
+        {error && <Alert tone="error">{error}</Alert>}
+        <div><Button type="submit" variant="primary" icon={Save} loading={busy}>{t.shop.save}</Button></div>
       </Card>
+      <div className="pp-stack">
+        <Card tone="sunk" title={t.messenger.title} className="pp-stack">
+          <p className="pp-row" role="status">
+            <Icon icon={MessageCircle} />
+            <strong>{shop.messengerPage ? t.messenger.on(shop.messengerPage) : t.messenger.off}</strong>
+          </p>
+          <p className="t-ink-2">{t.messenger.explain}</p>
+        </Card>
+        <Card tone="sunk" title={t.keeping.title} className="pp-stack">
+          <p className="t-ink-2">{t.keeping.body}</p>
+          <Field
+            label={t.keeping.label}
+            inputMode="numeric"
+            value={days}
+            suffix={t.keeping.days}
+            onChange={(e) => setDays(e.target.value.replace(/\D/g, '').slice(0, 3))}
+            hint={t.keeping.hint}
+          />
+        </Card>
+      </div>
     </form>
   );
 }
 
 function StaffAccounts() {
   const { staff: me } = useStaffSession();
+  const { m: msg, fmt } = useI18n();
+  const t = msg.staff.settings.staff;
   const list = useLive(() => api.listStaff(), 'staff-list');
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
@@ -122,13 +149,13 @@ function StaffAccounts() {
     setError(null);
     try {
       const m = await api.addStaff({ name, email, role });
-      toast(`${m.name} can now sign in`, { icon: UserPlus });
+      toast(t.added(m.name), { icon: UserPlus });
       setAdding(false);
       setName('');
       setEmail('');
       setRole('staff');
     } catch (err) {
-      setError(errorMessage(err));
+      setError(fmt.error(errorMessage(err)));
     } finally {
       setBusy(null);
     }
@@ -138,9 +165,9 @@ function StaffAccounts() {
     setBusy(m.id);
     try {
       await api.updateStaff(m.id, { active });
-      toast(`${m.name} ${active ? 'can sign in again' : 'can no longer sign in'}`);
+      toast(t.toggled(m.name, active));
     } catch (err) {
-      toast.error(errorMessage(err));
+      toast.error(fmt.error(errorMessage(err)));
     } finally {
       setBusy(null);
     }
@@ -149,21 +176,21 @@ function StaffAccounts() {
   return (
     <div className="pp-stack">
       <div className="pp-row-between">
-        <p className="t-ink-2">No public sign-up. Add each person here; they sign in with their email and a password.</p>
-        <Button icon={Plus} onClick={() => setAdding(true)}>Add staff</Button>
+        <p className="t-ink-2">{t.intro}</p>
+        <Button icon={Plus} onClick={() => setAdding(true)}>{t.add}</Button>
       </div>
       {!list.data ? (
         <Skeleton lines={3} />
       ) : (
-        <ul className="pp-settings-list" aria-label="Staff accounts">
+        <ul className="pp-settings-list" aria-label={t.listLabel}>
           {list.data.map((m) => (
             <li key={m.id} className="pp-settings-item">
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-                <p className="t-body-strong">{m.name}{m.id === me?.id ? ' (you)' : ''}</p>
-                <p className="t-meta t-truncate">{m.email} · {m.role === 'owner' ? 'Owner' : 'Staff'}</p>
+                <p className="t-body-strong">{m.name}{m.id === me?.id ? ` ${t.you}` : ''}</p>
+                <p className="t-meta t-truncate">{m.email} · {m.role === 'owner' ? t.owner : t.staff}</p>
               </div>
               <Switch
-                label={m.active ? 'Can sign in' : 'Turned off'}
+                label={m.active ? t.canSignIn : t.turnedOff}
                 checked={m.active}
                 disabled={m.id === me?.id || busy === m.id}
                 onChange={(v) => toggle(m, v)}
@@ -175,25 +202,25 @@ function StaffAccounts() {
       <Dialog
         open={adding}
         onClose={() => setAdding(false)}
-        title="Add staff"
-        description="They'll get an email to set their password."
+        title={t.add}
+        description={t.dialogDescription}
         footer={
           <>
-            <Button variant="quiet" onClick={() => setAdding(false)}>Cancel</Button>
-            <Button variant="primary" icon={UserPlus} loading={busy === 'add'} onClick={add}>Add staff</Button>
+            <Button variant="quiet" onClick={() => setAdding(false)}>{msg.common.cancel}</Button>
+            <Button variant="primary" icon={UserPlus} loading={busy === 'add'} onClick={add}>{t.add}</Button>
           </>
         }
       >
         <div className="pp-stack">
-          <Field label="Name" value={name} onChange={(e) => setName(e.target.value)} data-autofocus />
-          <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Field label={t.name} value={name} onChange={(e) => setName(e.target.value)} data-autofocus />
+          <Field label={t.email} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <SelectField
-            label="Role"
+            label={t.role}
             value={role}
             onChange={(e) => setRole(e.target.value as StaffRole)}
             options={[
-              { value: 'staff', label: 'Staff: orders and printing' },
-              { value: 'owner', label: 'Owner: also settings and accounts' },
+              { value: 'staff', label: t.roleStaff },
+              { value: 'owner', label: t.roleOwner },
             ]}
           />
           {error && <Alert tone="error">{error}</Alert>}
@@ -205,6 +232,9 @@ function StaffAccounts() {
 
 function Printers() {
   const now = useNow(15_000);
+  const { m, fmt } = useI18n();
+  const t = m.staff.settings.printers;
+  const ts = m.staff.settings.sample;
   const agent = useLive(() => api.agentStatus(), 'agent', { pollMs: 15_000 });
   const [offline, setOffline] = useState(mockControls?.isAgentOffline() ?? false);
   const [resetOpen, setResetOpen] = useState(false);
@@ -212,15 +242,15 @@ function Printers() {
 
   return (
     <div className="pp-two-col">
-      <Card title="Shop laptop" meta="The print agent reports in every 30 seconds" className="pp-stack">
+      <Card title={t.laptop} meta={t.laptopMeta} className="pp-stack">
         <p className="pp-row">
           <span className={a?.online ? 'pp-dot' : 'pp-dot is-off'} aria-hidden="true" />
-          <strong>{!a ? 'Checking…' : a.online ? 'Online' : 'Offline'}</strong>
+          <strong>{!a ? t.checking : a.online ? t.online : t.offline}</strong>
           <span className="t-meta">
-            {a?.online ? 'Seen just now' : a?.lastSeenAt ? `Last seen ${formatDuration(a.lastSeenAt, now)} ago` : ''}
+            {a?.online ? t.seenJustNow : a?.lastSeenAt ? m.staff.printer.lastSeen(fmt.duration(a.lastSeenAt, now)) : ''}
           </span>
         </p>
-        <span className="t-label">Printers reported</span>
+        <span className="t-label">{t.reported}</span>
         <ul className="pp-settings-list">
           {(Object.keys(PRINTER_FOR_PAPER) as Array<keyof typeof PRINTER_FOR_PAPER>).map((paper) => {
             const name = PRINTER_FOR_PAPER[paper];
@@ -229,21 +259,21 @@ function Printers() {
               <li key={paper} className="pp-settings-item">
                 <Printer size={16} strokeWidth={1.5} aria-hidden="true" />
                 <span style={{ flex: '1 1 auto' }}>{name}</span>
-                <span className="t-meta">{PAPER_LABEL[paper]} paper{seen ? '' : ' · not found'}</span>
+                <span className="t-meta">{t.paperLine(PAPER_LABEL[paper], Boolean(seen))}</span>
               </li>
             );
           })}
         </ul>
         <p className="t-small">
-          One Windows printer entry per paper size, each with its paper set as default. Two-sided is manual: odd pages, flip, even pages.
+          {t.note}
         </p>
       </Card>
 
       {mockControls && (
-        <Card tone="sunk" title="Sample data" meta="Preview only" className="pp-stack">
+        <Card tone="sunk" title={ts.title} meta={ts.meta} className="pp-stack">
           <Switch
-            label="Shop laptop is offline"
-            hint="See how the dashboard looks when the print agent stops reporting. Jobs wait in the queue."
+            label={ts.offline}
+            hint={ts.offlineHint}
             checked={offline}
             onChange={(v) => {
               mockControls?.setAgentOffline(v);
@@ -251,17 +281,17 @@ function Printers() {
             }}
           />
           <div>
-            <Button icon={RotateCcw} onClick={() => setResetOpen(true)}>Reset sample data</Button>
+            <Button icon={RotateCcw} onClick={() => setResetOpen(true)}>{ts.reset}</Button>
           </div>
           <Dialog
             open={resetOpen}
             alert
             onClose={() => setResetOpen(false)}
-            title="Reset sample data"
-            description="Puts back the original sample orders and settings. Orders you added in this preview are removed."
+            title={ts.reset}
+            description={ts.resetDescription}
             footer={
               <>
-                <Button variant="quiet" onClick={() => setResetOpen(false)}>Cancel</Button>
+                <Button variant="quiet" onClick={() => setResetOpen(false)}>{m.common.cancel}</Button>
                 <Button
                   variant="primary"
                   icon={RotateCcw}
@@ -269,10 +299,10 @@ function Printers() {
                     mockControls?.resetSampleData();
                     setOffline(false);
                     setResetOpen(false);
-                    toast('Sample data reset');
+                    toast(ts.resetDone);
                   }}
                 >
-                  Reset sample data
+                  {ts.reset}
                 </Button>
               </>
             }
