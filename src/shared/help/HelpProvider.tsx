@@ -107,13 +107,7 @@ export function HelpProvider({ children }: { children: ReactNode }) {
   const onGuided = () => {
     setPref('guided', true);
     setWelcomeOpen(false);
-    // bring the step-by-step form into view once the popup has closed
-    window.setTimeout(() => {
-      const el = document.querySelector<HTMLElement>('[data-tour="guided"]');
-      if (!el) return;
-      const header = document.querySelector<HTMLElement>('.pp-site-header');
-      window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - (header?.offsetHeight ?? 0) - 16 });
-    }, START_DELAY);
+    // the step-by-step form brings its first question into view and focus by itself
   };
 
   const value = useMemo(() => ({ startTour, openWelcome, openSettings }), [startTour, openWelcome, openSettings]);

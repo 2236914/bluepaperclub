@@ -54,6 +54,7 @@
 .fm-g-upload .mn-upload-title { font-size: calc(19px * var(--ts)); line-height: calc(26px * var(--ts)); }
 .fm-g-upload .mn-upload-hint { font-size: calc(15px * var(--ts)); line-height: calc(21px * var(--ts)); }
 .fm-g-upload:not(.mn-upload-compact) .mn-upload-icon { width: calc(56px * var(--cs)); height: calc(56px * var(--cs)); }
+.fm-g-upload .mn-upload-icon { flex: none; }
 .fm-g-upload .mn-upload-icon .mn-icon { width: 24px; height: 24px; }
 .fm-g-upload.mn-upload-compact { min-height: calc(72px * var(--cs)); }
 
@@ -142,3 +143,4 @@
 .fm-g-sum-files li { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-3); background: var(--surface-sunk); }
 .fm-g-sum-file-name { font-weight: 600; overflow-wrap: anywhere; }
 .fm-g-break { overflow-wrap: anywhere; }
+.fm-guided .fm-messenger-line { font-size: calc(15px * var(--ts)); line-height: calc(21px * var(--ts)); }
