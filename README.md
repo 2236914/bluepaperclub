@@ -4,6 +4,17 @@ Online ordering for the shop: customers upload files, get an order ID by email a
 
 This is **phase 1 of the spec: the UI on sample data**. Every screen runs against `mockApi` (in-memory + `localStorage`) so the owner can click through the customer and staff flows on a phone and a laptop before any backend exists.
 
+## Language, accessibility and help (added after the first review)
+
+- **Filipino by default**, English one tap away, on the customer site and the staff dashboard. Strings live in `src/i18n/messages/<area>.ts`; the type check fails if a Filipino string is missing.
+- **Make-it-easier bar** under the customer header: language, text size (A / A+ / A++ scales text and buttons), more settings (high contrast, less motion, step-by-step mode, read-aloud buttons) and "Paano gamitin" (guided tour).
+- **Welcome popup** on a first visit, the **guided tour** of the landing page, and **step-by-step mode** (one question per screen, a check for every file, big paper/color/sides cards).
+- **Thank-you popup** after sending, with the order ID large, read aloud, and **"Remember me on this phone"** (no account or password; fills in the form next time and lists recent orders on the tracking page; "Forget me" clears it).
+- **Messenger updates**: "Kumuha ng update sa Messenger" opens a chat with the shop's Page with the order attached; after that one tap the backend messages the customer automatically (printing, ready, file issue). Needs the shop's Facebook Page and a Meta app approved for Messenger (free). Set the Page under Shop settings.
+- **Staff order editing**: labeled file actions (I-print, Iba pa: Tingnan, I-download, Palitan, Alisin), add files, and I-edit ang order (customer details, print settings, note). Every change is logged in the order's activity.
+
+Email templates are still English only.
+
 ## Run it
 
 ```bash

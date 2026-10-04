@@ -54,7 +54,7 @@
 /* Table layout: the status column holds the tag plus "Buksan", and grows with the text size. */
 @container orders (min-width: 640px) {
   .pp-orders-head,
-  .pp-order-row { grid-template-columns: calc(150px * var(--ts, 1)) minmax(0, 1.2fr) minmax(0, 1.3fr) calc(216px * var(--ts, 1)); }
+  .pp-order-row { grid-template-columns: calc(110px + 40px * var(--ts, 1)) minmax(0, 1.2fr) minmax(0, 1.3fr) calc(112px + 104px * var(--ts, 1)); }
   .pp-cell-tag { justify-self: stretch; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); }
 }
 /* With extra large text the four columns need more room; keep the stacked rows a little longer. */
@@ -75,3 +75,6 @@
 
 /* Sample account buttons on the sign-in page: a bigger hit area without changing the line. */
 .pp-login .pp-linkbtn { padding: var(--space-2) 0; }
+
+/* Settings and email tabs wrap on phones instead of scrolling a tab out of view. */
+@media (max-width: 599px) { .pp-staff-main .mn-tabs-list { flex-wrap: wrap; column-gap: var(--space-4); } }

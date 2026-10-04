@@ -237,3 +237,4 @@ a:hover { color: var(--ink-2); }
 .mn-icon { width: calc(16px * var(--ts)); height: calc(16px * var(--ts)); }
 .mn-tag .mn-icon { width: calc(12px * var(--ts)); height: calc(12px * var(--ts)); }
 .mn-check-box, .mn-check-input { width: calc(20px * var(--cs)); height: calc(20px * var(--cs)); }
+.mn-has-icon .mn-field-input { padding-left: calc(24px + 16px * var(--ts)); }
